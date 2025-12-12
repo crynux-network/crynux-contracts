@@ -6,22 +6,43 @@ import "./Credits.sol";
 import "./BenefitAddress.sol";
 import "./DelegatedStaking.sol";
 
-
 contract NodeStaking is Ownable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     uint256 private maxAccountsAllowed = 100000;
     uint256 private minStakeAmount = 400 * 10 ** 18;
+    uint256 private forceUnstakeDelay = 1800;
+
+    enum StakingStatus {
+        Unstaked,
+        Staked,
+        PendingUnstaked
+    }
 
     struct StakingInfo {
         address nodeAddress;
         uint stakedBalance;
         uint stakedCredits;
+        StakingStatus status;
+        uint unstakeTimestamp;
     }
 
-    event NodeStaked(address indexed nodeAddress, uint stakedBalance, uint stakedCredits);
-    event NodeUnstaked(address indexed nodeAddress, uint stakedBalance, uint stakedCredits);
-    event NodeSlashed(address indexed nodeAddress, uint stakedBalance, uint stakedCredits);
+    event NodeStaked(
+        address indexed nodeAddress,
+        uint stakedBalance,
+        uint stakedCredits
+    );
+    event NodeTryUnstaked(address indexed nodeAddress);
+    event NodeUnstaked(
+        address indexed nodeAddress,
+        uint stakedBalance,
+        uint stakedCredits
+    );
+    event NodeSlashed(
+        address indexed nodeAddress,
+        uint stakedBalance,
+        uint stakedCredits
+    );
 
     // store all staking info
     EnumerableSet.AddressSet private allNodeAddresses;
@@ -53,12 +74,19 @@ contract NodeStaking is Ownable {
         minStakeAmount = stakeAmount;
     }
 
+    function setForceUnstakeDelay(uint delay) public onlyOwner {
+        require(delay > 0, "force unstake delay is 0");
+        forceUnstakeDelay = delay;
+    }
+
     // public api for node
     function getMinStakeAmount() public view returns (uint) {
         return minStakeAmount;
     }
-    
-    function getStakingInfo(address nodeAddress) public view returns (StakingInfo memory) {
+
+    function getStakingInfo(
+        address nodeAddress
+    ) public view returns (StakingInfo memory) {
         return nodeStakingMap[nodeAddress];
     }
 
@@ -67,12 +95,20 @@ contract NodeStaking is Ownable {
     }
 
     function stake(uint stakedAmount) public payable {
-        require(allNodeAddresses.length() < maxAccountsAllowed, "Network is full");
+        require(
+            allNodeAddresses.length() < maxAccountsAllowed,
+            "Network is full"
+        );
         require(stakedAmount >= minStakeAmount, "Staked amount is too low");
 
         StakingInfo memory currentStakingInfo = nodeStakingMap[msg.sender];
-        uint currentStakedAmount = currentStakingInfo.stakedBalance + currentStakingInfo.stakedCredits;
-
+        require(
+            currentStakingInfo.status == StakingStatus.Unstaked ||
+                currentStakingInfo.status == StakingStatus.Staked,
+            "Wrong staking status"
+        );
+        uint currentStakedAmount = currentStakingInfo.stakedBalance +
+            currentStakingInfo.stakedCredits;
 
         if (currentStakedAmount < stakedAmount) {
             uint stakedBalance = 0;
@@ -113,14 +149,71 @@ contract NodeStaking is Ownable {
         }
 
         nodeStakingMap[msg.sender].nodeAddress = msg.sender;
+        nodeStakingMap[msg.sender].status = StakingStatus.Staked;
         allNodeAddresses.add(msg.sender);
-        emit NodeStaked(msg.sender, nodeStakingMap[msg.sender].stakedBalance, nodeStakingMap[msg.sender].stakedCredits);
+        emit NodeStaked(
+            msg.sender,
+            nodeStakingMap[msg.sender].stakedBalance,
+            nodeStakingMap[msg.sender].stakedCredits
+        );
+    }
+
+    function tryUnstake() public {
+        require(allNodeAddresses.contains(msg.sender), "Node not staked");
+        require(
+            nodeStakingMap[msg.sender].status == StakingStatus.Staked,
+            "Node has unstaked"
+        );
+        nodeStakingMap[msg.sender].status = StakingStatus.PendingUnstaked;
+        nodeStakingMap[msg.sender].unstakeTimestamp = block.timestamp;
+        emit NodeTryUnstaked(msg.sender);
+    }
+
+    function forceUnstake() public {
+        require(allNodeAddresses.contains(msg.sender), "Node not staked");
+        require(
+            nodeStakingMap[msg.sender].status == StakingStatus.PendingUnstaked,
+            "Node didn't tryUnstake first"
+        );
+        require(
+            nodeStakingMap[msg.sender].unstakeTimestamp + forceUnstakeDelay <
+                block.timestamp,
+            "Force unstake time not reached"
+        );
+        _unstake(msg.sender);
     }
 
     // public api for admin
     function unstake(address nodeAddress) public {
         require(msg.sender == adminAddress, "Not called by the admin");
-        require(allNodeAddresses.contains(nodeAddress), "Not staked");
+        require(allNodeAddresses.contains(nodeAddress), "Node not staked");
+        // status can be StakingStatus.Staked to support relay kick out node
+        require(
+            nodeStakingMap[nodeAddress].status == StakingStatus.PendingUnstaked || nodeStakingMap[nodeAddress].status == StakingStatus.Staked,
+            "Wrong staking status"
+        );
+        _unstake(nodeAddress);
+    }
+
+    function slashStaking(address nodeAddress) public {
+        require(msg.sender == adminAddress, "Not called by the admin");
+        require(allNodeAddresses.contains(nodeAddress), "Node not staked");
+        uint stakedBalance = nodeStakingMap[nodeAddress].stakedBalance;
+        uint stakedCredits = nodeStakingMap[nodeAddress].stakedCredits;
+        uint stakeAmount = stakedBalance + stakedCredits;
+        require(stakeAmount > 0, "Staking is zero");
+        if (stakedBalance > 0) {
+            (bool success, ) = owner().call{value: stakedBalance}("");
+            require(success, "Token transfer failed");
+        }
+        ds.slashNode(nodeAddress);
+        // remove node
+        allNodeAddresses.remove(nodeAddress);
+        delete nodeStakingMap[nodeAddress];
+        emit NodeSlashed(nodeAddress, stakedBalance, stakedCredits);
+    }
+
+    function _unstake(address nodeAddress) internal {
         uint stakedBalance = nodeStakingMap[nodeAddress].stakedBalance;
         uint stakedCredits = nodeStakingMap[nodeAddress].stakedCredits;
         uint stakeAmount = stakedBalance + stakedCredits;
@@ -141,33 +234,6 @@ contract NodeStaking is Ownable {
         allNodeAddresses.remove(nodeAddress);
         delete nodeStakingMap[nodeAddress];
         emit NodeUnstaked(nodeAddress, stakedBalance, stakedCredits);
-    }
-
-    function slashStaking(address nodeAddress) public {
-        require(
-            msg.sender == adminAddress,
-            "Not called by the admin"
-        );
-        require(
-            allNodeAddresses.contains(nodeAddress),
-            "Node not staked"
-        );
-        uint stakedBalance = nodeStakingMap[nodeAddress].stakedBalance;
-        uint stakedCredits = nodeStakingMap[nodeAddress].stakedCredits;
-        uint stakeAmount = stakedBalance + stakedCredits;
-        require(
-            stakeAmount > 0,
-            "Staking is zero"
-        );
-        if (stakedBalance > 0) {
-            (bool success, ) = owner().call{value: stakedBalance}("");
-            require(success, "Token transfer failed");
-        }
-        ds.slashNode(nodeAddress);
-        // remove node
-        allNodeAddresses.remove(nodeAddress);
-        delete nodeStakingMap[nodeAddress];
-        emit NodeSlashed(nodeAddress, stakedBalance, stakedCredits);
     }
 
     function returnBalance(address nodeAddress, uint amount) internal {
