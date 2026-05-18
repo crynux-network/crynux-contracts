@@ -1,0 +1,45 @@
+import { configVariable, defineConfig } from "hardhat/config";
+import hardhatToolboxMochaEthers from "@nomicfoundation/hardhat-toolbox-mocha-ethers";
+
+const solidityConfig = {
+    version: "0.8.24",
+    settings: {
+        optimizer: {
+            enabled: true,
+            runs: 200,
+        },
+        viaIR: true,
+    },
+};
+
+const baseRpcUrl = process.env.BASE_RPC_URL ?? "https://mainnet.base.org";
+const baseSepoliaRpcUrl = process.env.BASE_SEPOLIA_RPC_URL ?? "https://sepolia.base.org";
+
+export default defineConfig({
+    plugins: [hardhatToolboxMochaEthers],
+    solidity: {
+        profiles: {
+            default: solidityConfig,
+            production: solidityConfig,
+        },
+    },
+    networks: {
+        base: {
+            type: "http",
+            chainType: "op",
+            chainId: 8453,
+            url: baseRpcUrl,
+            accounts: [configVariable("L2_ROLLUP_DEPLOYER_PRIVATE_KEY")],
+        },
+        baseSepolia: {
+            type: "http",
+            chainType: "op",
+            chainId: 84532,
+            url: baseSepoliaRpcUrl,
+            accounts: [configVariable("L2_ROLLUP_DEPLOYER_PRIVATE_KEY")],
+        },
+    },
+    typechain: {
+        dontOverrideCompile: true,
+    },
+});
