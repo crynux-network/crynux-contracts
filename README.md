@@ -9,9 +9,9 @@ For the current off-chain task dispatch architecture and the active Relay integr
 ### Task State Transitions
 ![Task State Transitions](./docs/state-transitions.png)
 
-### Compilation and Generating Contract ABIs
+### Compilation
 
-The contracts are developed using the Hardhat framework.
+The contracts are developed using Hardhat 3.
 
 Install the dependencies before compilation:
 
@@ -19,24 +19,30 @@ Install the dependencies before compilation:
 $ npm install
 ```
 
-Run hardhat compiling command using npm:
-
-ABI is generated using [@symblox/hardhat-abi-gen](https://github.com/symblox/hardhat-abi-gen/).
+Run the Hardhat compile command using npm:
 
 ```shell
-$ mkdir abi && npm run compile
+$ npm run compile
 ```
 
-### Tests
+### L1 ERC-20 Crynux Token Deployment
 
-All the test files are located under [```./test```](./test). The tests could be executed using npm:
+Store the rollup deployer private key in the Hardhat keystore:
 
 ```shell
-$ npm run test
-$ npx hardhat test
+$ npx hardhat keystore set L2_ROLLUP_DEPLOYER_PRIVATE_KEY
 ```
 
-### Run coverage
+Generate a new wallet when a fresh deployer account is required:
+
+```shell
+$ npx tsx scripts/generate-wallet.ts
 ```
-$ npx hardhat coverage && open coverage/index.html
+
+Base mainnet uses `https://mainnet.base.org` by default. Base Sepolia uses `https://sepolia.base.org` by default. Set `BASE_RPC_URL` or `BASE_SEPOLIA_RPC_URL` in the environment to override either endpoint.
+
+Deploy the L1 ERC-20 Crynux token with Hardhat Ignition:
+
+```shell
+$ npm run deploy:l1:erc20-crynux-token -- --network <network>
 ```

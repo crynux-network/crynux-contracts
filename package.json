@@ -1,25 +1,18 @@
 {
     "name": "crynux-contracts",
     "version": "2.0.0",
-    "type": "commonjs",
+    "type": "module",
     "scripts": {
         "compile": "hardhat compile",
-        "test": "hardhat test",
-        "coverage": "hardhat coverage"
+        "deploy:l1:erc20-crynux-token": "hardhat ignition deploy ignition/modules/deploy-l1-erc20-crynux-token.ts --deployment-id deploy-l1-erc20-crynux-token"
     },
     "devDependencies": {
-        "@nomicfoundation/hardhat-chai-matchers": "^2.0.6",
-        "@nomicfoundation/hardhat-network-helpers": "^1.0.10",
-        "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+        "@nomicfoundation/hardhat-toolbox-mocha-ethers": "3.0.5",
         "@openzeppelin/contracts": "5.0.2",
-        "@openzeppelin/test-helpers": "^0.5.16",
         "@prb/math": "^4.1.0",
-        "@symblox/hardhat-abi-gen": "^0.2.0",
-        "bn.js": "^5.2.1",
-        "chai": "^4.3.7",
-        "eth-crypto": "^2.6.0",
-        "hardhat": "^2.22.15",
-        "vrf-ts-256": "^1.0.0",
-        "web3": "^4.14.0"
+        "ethers": "6.16.0",
+        "hardhat": "3.4.5",
+        "tsx": "4.22.1",
+        "typescript": "6.0.3"
     }
 }

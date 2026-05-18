@@ -12,6 +12,7 @@ The smart contracts in current production usage MUST retain only on-chain state 
 - delegated staking
 - bootstrap credits
 - beneficial address binding
+- parent chain ERC-20 token representation for L2 rollup launch requirements
 
 Contracts that implement the earlier fully on-chain task consensus design are retained in this repository, but they MUST NOT be treated as the active Relay integration surface.
 
@@ -25,6 +26,7 @@ The active on-chain contract set for Relay integration MUST be:
 | `DelegatedStaking.sol` | Active | Delegator staking source of truth, delegator share, and delegated-stake slash execution |
 | `Credits.sol` | Active | Bootstrap staking credits for first-node onboarding in the testnet flow |
 | `BenefitAddress.sol` | Active | Immutable payout binding for node-side balance returns and external payout systems |
+| `CrynuxToken.sol` | Active | Parent chain ERC-20 Crynux token for L2 rollup launch requirements |
 
 Relay configuration and client initialization MUST reference only these contracts as the current blockchain integration boundary.
 
@@ -46,6 +48,10 @@ Relay configuration and client initialization MUST reference only these contract
 
 `BenefitAddress.sol` MUST provide the immutable mapping from a node operational address to its beneficial address. It MUST remain outside task dispatching and task validation, while staying active as the payout destination source of truth for operator-side unstake returns and Relay-controlled withdrawal flows.
 
+### `CrynuxToken.sol`
+
+`CrynuxToken.sol` MUST provide the ERC-20 Crynux token representation on the parent chain required by L2 rollup chain launch flows. It MUST remain outside task dispatching, task assignment, and task validation.
+
 ## Legacy Contract Stack Retained in Repository
 
 The following contracts implement the earlier fully on-chain consensus and task dispatching design. They are retained in the repository, but they MUST NOT be treated as the active Relay integration surface.
@@ -58,7 +64,6 @@ The following contracts implement the earlier fully on-chain consensus and task 
 | `QOS.sol` | On-chain QoS scoring for the legacy task path | Legacy |
 | `NetworkStats.sol` | On-chain network and task statistics for the legacy task path | Legacy |
 | `Random.sol` | Randomness helper for the legacy task path | Legacy |
-| `CrynuxToken.sol` | Earlier token contract used by the legacy stack | Legacy |
 
 ### Legacy `VSSTask` Path
 
@@ -70,9 +75,9 @@ This path MUST be treated as obsolete for the current Relay architecture.
 
 ### Legacy Deployment Artifacts
 
-The migration scripts and Hardhat test fixtures currently present in this repository deploy the legacy `Node` and `Task` stack.
+Historical migration scripts and Hardhat test fixtures deployed the legacy `Node` and `Task` stack.
 
-These scripts and tests MUST be interpreted as legacy coverage for the earlier on-chain consensus design. They MUST NOT be used as the source of truth for the current Relay integration set.
+Those scripts and tests MUST be interpreted as legacy coverage for the earlier on-chain consensus design. They MUST NOT be used as the source of truth for the current Relay integration set.
 
 ## Source of Truth for Current Integration
 
@@ -81,5 +86,6 @@ For the current production architecture, the source of truth for contract usage 
 1. the Relay blockchain contract configuration
 2. the Relay blockchain client bindings
 3. the active staking and delegation flows implemented around `NodeStaking.sol`, `DelegatedStaking.sol`, `Credits.sol`, and `BenefitAddress.sol`
+4. the parent chain ERC-20 token deployment flow implemented around `CrynuxToken.sol`
 
 The presence of additional contracts in this repository SHALL NOT imply active production usage.
