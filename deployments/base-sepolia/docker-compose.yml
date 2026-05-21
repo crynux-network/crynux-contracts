@@ -1,0 +1,37 @@
+services:
+  das:
+    image: offchainlabs/nitro-node:v3.10.1-d7f07be
+    container_name: crynux-base-sepolia-das
+    restart: unless-stopped
+    ports:
+      - "9876:9876"
+      - "9877:9877"
+    volumes:
+      - ./keys:/home/user/data/keys:ro
+      - ./data/das:/home/user/data/das-data
+      - ./daserver.json:/home/user/data/daserver.json:ro
+    entrypoint:
+      - anytrustserver
+    command:
+      - --conf.file
+      - /home/user/data/daserver.json
+    environment:
+      GOMEMLIMIT: 4GiB
+
+  nitro-node:
+    image: offchainlabs/nitro-node:v3.10.1-d7f07be
+    container_name: crynux-base-sepolia-nitro-node
+    restart: unless-stopped
+    stop_grace_period: 30m
+    depends_on:
+      - das
+    ports:
+      - "8449:8449"
+    volumes:
+      - ./data/nitro:/home/user/.arbitrum
+      - ./nitro-node.json:/home/user/.arbitrum/nitro-node.json:ro
+    command:
+      - --conf.file
+      - /home/user/.arbitrum/nitro-node.json
+    environment:
+      GOMEMLIMIT: 4GiB
