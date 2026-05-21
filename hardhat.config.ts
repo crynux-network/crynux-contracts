@@ -36,7 +36,11 @@ export default defineConfig({
             chainType: "op",
             chainId: 84532,
             url: baseSepoliaRpcUrl,
-            accounts: [configVariable("L2_ROLLUP_DEPLOYER_PRIVATE_KEY")],
+            accounts: [
+                configVariable("L2_ROLLUP_DEPLOYER_PRIVATE_KEY"),
+                configVariable("L2_BATCH_POSTER_PRIVATE_KEY"),
+                configVariable("L2_VALIDATOR_PRIVATE_KEY"),
+            ],
         },
     },
     typechain: {
