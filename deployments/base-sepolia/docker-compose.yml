@@ -1,14 +1,40 @@
 services:
+  init-data-volumes:
+    image: alpine:latest
+    restart: "no"
+    command:
+      - sh
+      - -lc
+      - chown -R 1000:1000 /das-data /nitro-data
+    volumes:
+      - type: volume
+        source: das-data
+        target: /das-data
+        volume:
+          nocopy: true
+      - type: volume
+        source: nitro-data
+        target: /nitro-data
+        volume:
+          nocopy: true
+
   das:
     image: offchainlabs/nitro-node:v3.10.1-d7f07be
     container_name: crynux-base-sepolia-das
     restart: unless-stopped
+    depends_on:
+      init-data-volumes:
+        condition: service_completed_successfully
     ports:
       - "9876:9876"
       - "9877:9877"
     volumes:
       - ./keys:/home/user/data/keys:ro
-      - ./data/das:/home/user/data/das-data
+      - type: volume
+        source: das-data
+        target: /home/user/data/das-data
+        volume:
+          nocopy: true
       - ./daserver.json:/home/user/data/daserver.json:ro
     entrypoint:
       - anytrustserver
@@ -24,14 +50,25 @@ services:
     restart: unless-stopped
     stop_grace_period: 30m
     depends_on:
-      - das
+      init-data-volumes:
+        condition: service_completed_successfully
+      das:
+        condition: service_started
     ports:
       - "8449:8449"
     volumes:
-      - ./data/nitro:/home/user/.arbitrum
+      - type: volume
+        source: nitro-data
+        target: /home/user/.arbitrum
+        volume:
+          nocopy: true
       - ./nitro-node.json:/home/user/.arbitrum/nitro-node.json:ro
     command:
       - --conf.file
       - /home/user/.arbitrum/nitro-node.json
     environment:
       GOMEMLIMIT: 4GiB
+
+volumes:
+  das-data:
+  nitro-data:
