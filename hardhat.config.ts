@@ -14,9 +14,13 @@ const solidityConfig = {
 
 const baseRpcUrl = process.env.BASE_RPC_URL ?? "https://mainnet.base.org";
 const baseSepoliaRpcUrl = process.env.BASE_SEPOLIA_RPC_URL ?? "https://sepolia.base.org";
+const ignitionRequiredConfirmations = Number(process.env.IGNITION_REQUIRED_CONFIRMATIONS ?? "5");
 
 export default defineConfig({
     plugins: [hardhatToolboxMochaEthers],
+    ignition: {
+        requiredConfirmations: ignitionRequiredConfirmations,
+    },
     solidity: {
         profiles: {
             default: solidityConfig,
@@ -40,6 +44,15 @@ export default defineConfig({
                 configVariable("L2_ROLLUP_DEPLOYER_PRIVATE_KEY"),
                 configVariable("L2_BATCH_POSTER_PRIVATE_KEY"),
                 configVariable("L2_VALIDATOR_PRIVATE_KEY"),
+            ],
+        },
+        crynuxOnBaseSepolia: {
+            type: "http",
+            chainType: "generic",
+            chainId: 18896213,
+            url: "http://127.0.0.1:8449",
+            accounts: [
+                configVariable("L2_ROLLUP_DEPLOYER_PRIVATE_KEY"),
             ],
         },
     },

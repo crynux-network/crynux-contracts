@@ -26,6 +26,12 @@ Base Sepolia uses `https://sepolia.base.org` by default. Set `BASE_SEPOLIA_RPC_U
 $env:BASE_SEPOLIA_RPC_URL = "https://your-base-sepolia-rpc.example"
 ```
 
+The Crynux L2 RPC defaults to `http://127.0.0.1:8449`. Set `CRYNUX_L2_RPC_URL` when the Nitro node uses a different endpoint:
+
+```powershell
+$env:CRYNUX_L2_RPC_URL = "http://your-crynux-l2-rpc.example"
+```
+
 ## Configure `config.json`
 
 Update `config.json` before running the deployment scripts:
@@ -107,6 +113,16 @@ npx tsx deployments/base-sepolia/set-dac-keyset.ts
 
 The script prints the DAC keyset hash and the transaction receipt.
 
+## Create The Token Bridge
+
+After the rollup is running and `config.json` contains `coreContracts`, deploy the token bridge contracts:
+
+```powershell
+npx tsx deployments/base-sepolia/create-token-bridge.ts
+```
+
+Copy the printed `Token bridge contracts` object into `config.json` if another deployment script needs those addresses.
+
 ## Generate The Nitro Node Config
 
 After `config.json` contains `coreContracts` and the operator private keys are stored in the Hardhat keystore, generate the Nitro node config:
@@ -138,6 +154,7 @@ npx hardhat keystore set L2_VALIDATOR_PRIVATE_KEY
 .\deployments\base-sepolia\generate-dac-keyset.ps1
 npx tsx deployments/base-sepolia/create-rollup.ts
 npx tsx deployments/base-sepolia/set-dac-keyset.ts
+npx tsx deployments/base-sepolia/create-token-bridge.ts
 npx tsx deployments/base-sepolia/generate-nitro-node-config.ts
 ```
 

@@ -61,9 +61,11 @@ const nitroNodeConfig = prepareNodeConfig({
 });
 
 if (nitroNodeConfig.node?.['batch-poster'] !== undefined) {
-  const batchPosterMaxSize = nitroNodeConfig.node['batch-poster']['max-size'];
+  const batchPosterConfig = nitroNodeConfig.node['batch-poster'] as Record<string, unknown>;
+  const batchPosterMaxSize = batchPosterConfig['max-size'];
 
-  delete nitroNodeConfig.node['batch-poster']['max-size'];
+  batchPosterConfig['disable-dap-fallback-store-data-on-chain'] = true;
+  delete batchPosterConfig['max-size'];
 
   if (batchPosterMaxSize !== undefined && nitroNodeConfig.node['data-availability'] !== undefined) {
     const dataAvailabilityConfig = nitroNodeConfig.node['data-availability'] as Record<string, unknown>;

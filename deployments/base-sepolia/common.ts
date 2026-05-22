@@ -1,4 +1,4 @@
-import { createPublicClient, http, type Address, type Hex } from 'viem';
+import { createPublicClient, defineChain, http, type Address, type Hex } from 'viem';
 import { baseSepolia } from 'viem/chains';
 import { config } from 'hardhat';
 import { privateKeyToAccount } from 'viem/accounts';
@@ -35,10 +35,34 @@ const require = createRequire(import.meta.url);
 export const deploymentConfig = require('./config.json') as DeploymentConfig;
 export const parentChain = baseSepolia;
 export const parentChainRpcUrl = process.env.BASE_SEPOLIA_RPC_URL ?? parentChain.rpcUrls.default.http[0];
+export const orbitChainRpcUrl = process.env.CRYNUX_L2_RPC_URL ?? 'http://127.0.0.1:8449';
+export const orbitChain = defineChain({
+  id: deploymentConfig.l2ChainId,
+  name: 'Crynux on Base Sepolia',
+  network: 'crynux-base-sepolia',
+  nativeCurrency: {
+    name: 'Crynux',
+    symbol: 'CNX',
+    decimals: 18,
+  },
+  rpcUrls: {
+    default: {
+      http: [orbitChainRpcUrl],
+    },
+    public: {
+      http: [orbitChainRpcUrl],
+    },
+  },
+});
 
 export const parentChainPublicClient = createPublicClient({
   chain: parentChain,
   transport: http(parentChainRpcUrl),
+});
+
+export const orbitChainPublicClient = createPublicClient({
+  chain: orbitChain,
+  transport: http(orbitChainRpcUrl),
 });
 
 async function getConfiguredBaseSepoliaPrivateKey(accountIndex: number, accountDescription: string): Promise<Hex> {
