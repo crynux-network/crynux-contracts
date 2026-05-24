@@ -12,6 +12,7 @@ The smart contracts in current production usage MUST retain only on-chain state 
 - delegated staking
 - bootstrap credits
 - beneficial address binding
+- governed operational parameter control
 - parent chain ERC-20 token representation for L2 rollup launch requirements
 
 Contracts that implement the earlier fully on-chain task consensus design are retained in this repository, but they MUST NOT be treated as the active Relay integration surface.
@@ -26,23 +27,28 @@ The active on-chain contract set for Relay integration MUST be:
 | `DelegatedStaking.sol` | Active | Delegator staking source of truth, delegator share, and delegated-stake slash execution |
 | `Credits.sol` | Active | Bootstrap staking credits for first-node onboarding in the testnet flow |
 | `BenefitAddress.sol` | Active | Immutable payout binding for node-side balance returns and external payout systems |
+| `ParameterController.sol` | Active | Writer-gated governance controller for operational staking and credits parameters |
 | `CrynuxToken.sol` | Active | Parent chain ERC-20 Crynux token for L2 rollup launch requirements |
 
-Relay configuration and client initialization MUST reference only these contracts as the current blockchain integration boundary.
+Relay configuration and client initialization MUST reference the staking and credits contracts as the runtime integration boundary. Governance and operator tooling that updates operational parameters MUST reference `ParameterController.sol`.
 
 ## Active Contract Responsibilities
 
 ### `NodeStaking.sol`
 
-`NodeStaking.sol` MUST be the source of truth for operator-side staking. It MUST manage node operator stake amounts and staking status, enforce the minimum operator stake, support Relay-triggered unstake and slash through the configured `adminAddress`, and expose staking data for Relay synchronization. It MUST integrate with `Credits.sol` for bootstrap staking credits, `BenefitAddress.sol` for unstake payout destination, and `DelegatedStaking.sol` for delegated-stake slash coordination.
+`NodeStaking.sol` MUST be the source of truth for operator-side staking. It MUST manage node operator stake amounts and staking status, enforce the minimum operator stake, support Relay-triggered unstake and slash through the configured `adminAddress`, and expose staking data for Relay synchronization. It MUST integrate with `Credits.sol` for bootstrap staking credits, `BenefitAddress.sol` for unstake payout destination, and `DelegatedStaking.sol` for delegated-stake slash coordination. It MUST accept governed operational parameter updates only from the configured parameter controller. Its `slashReceiverAddress` MUST be constructor-configured and immutable after deployment.
 
 ### `DelegatedStaking.sol`
 
-`DelegatedStaking.sol` MUST be the source of truth for delegated staking and delegator share. It MUST manage delegation amounts and node-level delegator share, expose node and delegator staking views for Relay synchronization, coordinate node-level delegated staking slash when called by `NodeStaking.sol`, and clear or return delegation state when delegated staking is closed for a node. Its on-chain slash signal MUST remain node-level rather than per-delegator.
+`DelegatedStaking.sol` MUST be the source of truth for delegated staking and delegator share. It MUST manage delegation amounts and node-level delegator share, expose node and delegator staking views for Relay synchronization, coordinate node-level delegated staking slash when called by `NodeStaking.sol`, and clear or return delegation state when delegated staking is closed for a node. Its on-chain slash signal MUST remain node-level rather than per-delegator. It MUST accept governed operational parameter updates only from the configured parameter controller. Its `nodeStakingAddress` MUST be initialized once during deployment and MUST NOT be changed afterward. Its `slashReceiverAddress` MUST be constructor-configured and immutable after deployment.
 
 ### `Credits.sol`
 
-`Credits.sol` MUST provide bootstrap staking credits for node onboarding. In the current testnet flow, it MUST support off-chain approved credit minting for new operators, staking-only movement of credits into node staking, and unstake-only return of those credits. It MUST remain active even though it is not part of task dispatching, because Relay uses it for the credits request flow and staked credits remain slashable once moved into `NodeStaking.sol`.
+`Credits.sol` MUST provide bootstrap staking credits for node onboarding. In the current testnet flow, it MUST support off-chain approved credit minting for new operators, staking-only movement of credits into node staking, and unstake-only return of those credits. It MUST remain active even though it is not part of task dispatching, because Relay uses it for the credits request flow and staked credits remain slashable once moved into `NodeStaking.sol`. Its `stakingAddress` MUST be initialized once during deployment and MUST NOT be changed afterward. It MUST accept governed operational parameter updates only from the configured parameter controller.
+
+### `ParameterController.sol`
+
+`ParameterController.sol` MUST provide writer-gated governance execution for operational parameters on `NodeStaking.sol`, `DelegatedStaking.sol`, and `Credits.sol`. It MUST enforce that only the configured writer can execute supported parameter update calls, and it MUST allow owner-controlled writer handoff for governance transition.
 
 ### `BenefitAddress.sol`
 
@@ -86,6 +92,7 @@ For the current production architecture, the source of truth for contract usage 
 1. the Relay blockchain contract configuration
 2. the Relay blockchain client bindings
 3. the active staking and delegation flows implemented around `NodeStaking.sol`, `DelegatedStaking.sol`, `Credits.sol`, and `BenefitAddress.sol`
-4. the parent chain ERC-20 token deployment flow implemented around `CrynuxToken.sol`
+4. the active governed parameter update flow implemented around `ParameterController.sol`
+5. the parent chain ERC-20 token deployment flow implemented around `CrynuxToken.sol`
 
 The presence of additional contracts in this repository SHALL NOT imply active production usage.

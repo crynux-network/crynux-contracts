@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.18;
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "./ParameterControlled.sol";
 
-contract Credits is Ownable {
+contract Credits is ParameterControlled {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     // store all nodes with credits
@@ -18,14 +18,15 @@ contract Credits is Ownable {
     address private adminAddress;
 
     constructor(
-    ) Ownable(msg.sender) {
-    }
+    ) {}
 
     function setStakingAddress(address addr) external onlyOwner {
+        require(stakingAddress == address(0), "Staking address already set");
+        require(addr != address(0), "Staking address cannot be zero");
         stakingAddress = addr;
     }
 
-    function setAdminAddress(address addr) external onlyOwner {
+    function setAdminAddress(address addr) external onlyParameterController {
         adminAddress = addr;
     }
 

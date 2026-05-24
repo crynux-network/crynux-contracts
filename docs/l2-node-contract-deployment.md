@@ -29,6 +29,12 @@ The legacy task consensus contracts listed as legacy in `contract-roles-and-stat
 
 `DelegatedStaking` MUST reference `NodeStaking` as its node staking contract.
 
+`Credits`, `DelegatedStaking`, and `NodeStaking` MUST each store a `parameterController` address and MUST accept governed operational parameter updates only from that controller after initialization.
+
+The `parameterController` address in each target contract MUST be initialized exactly once and MUST NOT be changed afterward.
+
+`Credits.stakingAddress` and `DelegatedStaking.nodeStakingAddress` MUST be initialized once during deployment and MUST NOT be changed afterward. These contract linkage addresses MUST NOT be controlled through `ParameterController`.
+
 `NodeStaking` MUST call `Credits.stakeCredits(address,uint256)` when bootstrap credits are moved into operator staking.
 
 `NodeStaking` MUST call `Credits.unstakeCredits(address,uint256)` when staked credits are returned during operator unstake.
@@ -37,11 +43,30 @@ The legacy task consensus contracts listed as legacy in `contract-roles-and-stat
 
 `NodeStaking` MUST call `DelegatedStaking.slashNode(address)` when a node is slashed, so delegated staking state for that node is cleared through the delegated staking contract.
 
+`NodeStaking` and `DelegatedStaking` MUST receive `slashReceiverAddress` in their constructors. Slashed native balance MUST be sent to that immutable receiver address.
+
 ## Authority Addresses
 
-The deployer account MUST become the owner of `Credits`, `BenefitAddress`, `DelegatedStaking`, and `NodeStaking` at deployment time.
+The deployer account MUST become the owner of `Credits`, `BenefitAddress`, `DelegatedStaking`, `NodeStaking`, and `ParameterController` at deployment time.
 
-`relayAdminAddress` MUST be the address that signs Relay runtime transactions for `NodeStaking`. This address is authorized to call:
+`parameterWriterAddress` MUST be set on `ParameterController` at deployment time as the initial writer address. Governed operational parameter updates MUST be routed through `ParameterController` typed writer-gated methods.
+
+`slashReceiverAddress` MUST be provided at deployment time for both `NodeStaking` and `DelegatedStaking`. This address MUST NOT be zero and MUST NOT be changeable after deployment.
+
+The deployment parameter file for `DeployNodeContracts` MUST use this shape:
+
+```json
+{
+    "DeployNodeContracts": {
+        "relayOperatorAddress": "0x000000000000000000000000000000000000dEaD",
+        "creditsAdminAddress": "0x000000000000000000000000000000000000bEEF",
+        "parameterWriterAddress": "0x000000000000000000000000000000000000c0De",
+        "slashReceiverAddress": "0x000000000000000000000000000000000000FEE1"
+    }
+}
+```
+
+`relayOperatorAddress` MUST be the address that signs Relay runtime transactions for `NodeStaking`. This address is authorized to call:
 
 - `NodeStaking.unstake(address)`
 - `NodeStaking.slashStaking(address)`
