@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.18;
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "./Credits.sol";
 import "./BenefitAddress.sol";
 import "./DelegatedStaking.sol";
+import "./ParameterControlled.sol";
 
-contract NodeStaking is Ownable {
+contract NodeStaking is ParameterControlled {
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    uint256 private maxAccountsAllowed = 100000;
     uint256 private minStakeAmount = 400 * 10 ** 18;
     uint256 private forceUnstakeDelay = 1800;
 
@@ -53,28 +52,31 @@ contract NodeStaking is Ownable {
     DelegatedStaking private ds;
 
     address private adminAddress;
+    address private immutable slashReceiver;
 
     constructor(
         address creditsContract,
         address benefitAddressContract,
-        address delegatedStakingContract
-    ) Ownable(msg.sender) {
+        address delegatedStakingContract,
+        address slashReceiverAddress
+    ) {
+        require(slashReceiverAddress != address(0), "slash receiver is zero");
         credits = Credits(creditsContract);
         ba = BenefitAddress(benefitAddressContract);
         ds = DelegatedStaking(delegatedStakingContract);
+        slashReceiver = slashReceiverAddress;
     }
 
-    // public api for owner
-    function setAdminAddress(address addr) external onlyOwner {
+    function setAdminAddress(address addr) external onlyParameterController {
         adminAddress = addr;
     }
 
-    function setMinStakeAmount(uint stakeAmount) public onlyOwner {
+    function setMinStakeAmount(uint stakeAmount) public onlyParameterController {
         require(stakeAmount > 0, "minimum stake amount is 0");
         minStakeAmount = stakeAmount;
     }
 
-    function setForceUnstakeDelay(uint delay) public onlyOwner {
+    function setForceUnstakeDelay(uint delay) public onlyParameterController {
         require(delay > 0, "force unstake delay is 0");
         forceUnstakeDelay = delay;
     }
@@ -84,21 +86,42 @@ contract NodeStaking is Ownable {
         return minStakeAmount;
     }
 
+    function getForceUnstakeDelay() public view returns (uint256) {
+        return forceUnstakeDelay;
+    }
+
     function getStakingInfo(
         address nodeAddress
     ) public view returns (StakingInfo memory) {
         return nodeStakingMap[nodeAddress];
     }
 
-    function getAllNodeAddresses() public view returns (address[] memory) {
-        return allNodeAddresses.values();
+    function getAllNodeAddresses(
+        uint256 page,
+        uint256 pageSize
+    ) public view returns (address[] memory) {
+        require(page > 0, "page is 0");
+        require(pageSize > 0 && pageSize <= 200, "invalid page size");
+
+        uint256 total = allNodeAddresses.length();
+        uint256 start = (page - 1) * pageSize;
+        if (start >= total) {
+            return new address[](0);
+        }
+
+        uint256 end = start + pageSize;
+        if (end > total) {
+            end = total;
+        }
+
+        address[] memory nodes = new address[](end - start);
+        for (uint256 i = 0; i < nodes.length; i++) {
+            nodes[i] = allNodeAddresses.at(start + i);
+        }
+        return nodes;
     }
 
     function stake(uint stakedAmount) public payable {
-        require(
-            allNodeAddresses.length() < maxAccountsAllowed,
-            "Network is full"
-        );
         require(stakedAmount >= minStakeAmount, "Staked amount is too low");
 
         StakingInfo memory currentStakingInfo = nodeStakingMap[msg.sender];
@@ -203,7 +226,8 @@ contract NodeStaking is Ownable {
         uint stakeAmount = stakedBalance + stakedCredits;
         require(stakeAmount > 0, "Staking is zero");
         if (stakedBalance > 0) {
-            (bool success, ) = owner().call{value: stakedBalance}("");
+            require(slashReceiver != address(0), "slash receiver not set");
+            (bool success, ) = slashReceiver.call{value: stakedBalance}("");
             require(success, "Token transfer failed");
         }
         ds.slashNode(nodeAddress);

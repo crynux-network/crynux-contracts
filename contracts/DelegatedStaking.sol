@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.18;
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "./ParameterControlled.sol";
 
-contract DelegatedStaking is Ownable {
+contract DelegatedStaking is ParameterControlled {
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
@@ -41,10 +41,16 @@ contract DelegatedStaking is Ownable {
     uint private minStakeAmount = 400 * 10 ** 18;
 
     address private nodeStakingAddress;
+    address private immutable slashReceiver;
 
-    constructor() Ownable(msg.sender) {}
+    constructor(address slashReceiverAddress) {
+        require(slashReceiverAddress != address(0), "slash receiver is zero");
+        slashReceiver = slashReceiverAddress;
+    }
 
-    function setMinStakeAmount(uint stakeAmount) public onlyOwner {
+    function setMinStakeAmount(
+        uint stakeAmount
+    ) public onlyParameterController {
         require(stakeAmount > 0, "minimum stake amount is 0");
         minStakeAmount = stakeAmount;
     }
@@ -53,7 +59,14 @@ contract DelegatedStaking is Ownable {
         return minStakeAmount;
     }
 
-    function setNodeStakingAddress(address addr) public onlyOwner {
+    function setNodeStakingAddress(
+        address addr
+    ) public onlyOwner {
+        require(
+            nodeStakingAddress == address(0),
+            "Node staking address already set"
+        );
+        require(addr != address(0), "Node staking address cannot be zero");
         nodeStakingAddress = addr;
     }
 
@@ -167,8 +180,9 @@ contract DelegatedStaking is Ownable {
 
     function slashStaking(uint amount) private {
         require(amount > 0, "amount is 0");
+        require(slashReceiver != address(0), "slash receiver not set");
 
-        (bool success, ) = owner().call{value: amount}("");
+        (bool success, ) = slashReceiver.call{value: amount}("");
         require(success, "token transfer failed");
     }
 

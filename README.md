@@ -46,3 +46,31 @@ Deploy the L1 ERC-20 Crynux token with Hardhat Ignition:
 ```shell
 $ npm run deploy:l1:erc20-crynux-token -- --network <network>
 ```
+
+### L2 Node Contracts Deployment
+
+Create a deployment parameter file for the L2 node contracts:
+
+```json
+{
+    "DeployNodeContracts": {
+        "relayOperatorAddress": "0x000000000000000000000000000000000000dEaD",
+        "creditsAdminAddress": "0x000000000000000000000000000000000000bEEF",
+        "parameterWriterAddress": "0x000000000000000000000000000000000000c0De",
+        "slashReceiverAddress": "0x000000000000000000000000000000000000FEE1"
+    }
+}
+```
+
+Parameter requirements:
+
+- `relayOperatorAddress`: Relay runtime signer for `NodeStaking.unstake` and `NodeStaking.slashStaking`.
+- `creditsAdminAddress`: bootstrap credit issuance signer for `Credits.createCredits`.
+- `parameterWriterAddress`: initial writer for `ParameterController` governed operational parameter updates.
+- `slashReceiverAddress`: immutable slash receiver for both `NodeStaking` and `DelegatedStaking`. This address is set in constructors and cannot be changed after deployment.
+
+Deploy the L2 node contracts with Hardhat Ignition:
+
+```shell
+$ npm run deploy:l2:node-contracts -- --network <network> --parameters ./cache/deploy-l2-node-contracts-params.json
+```
