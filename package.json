@@ -5,7 +5,8 @@
     "scripts": {
         "compile": "hardhat compile",
         "deploy:l1:erc20-crynux-token": "hardhat ignition deploy ignition/modules/deploy-l1-erc20-crynux-token.ts --deployment-id deploy-l1-erc20-crynux-token",
-        "deploy:l2:node-contracts": "hardhat ignition deploy ignition/modules/deploy-l2-node-contracts.ts --deployment-id deploy-l2-node-contracts"
+        "deploy:l2:node-contracts": "hardhat ignition deploy ignition/modules/deploy-l2-node-contracts.ts --deployment-id deploy-l2-node-contracts",
+        "deploy:emission:erc20": "hardhat ignition deploy ignition/modules/deploy-emission-erc20.ts --deployment-id deploy-emission-erc20"
     },
     "devDependencies": {
         "@nomicfoundation/hardhat-toolbox-mocha-ethers": "3.0.5",
