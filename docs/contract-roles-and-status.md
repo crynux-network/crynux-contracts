@@ -29,6 +29,7 @@ The active on-chain contract set for Relay integration MUST be:
 | `BenefitAddress.sol` | Active | Immutable payout binding for node-side balance returns and external payout systems |
 | `ParameterController.sol` | Active | Writer-gated governance controller for operational staking and credits parameters |
 | `CrynuxToken.sol` | Active | Parent chain ERC-20 Crynux token for L2 rollup launch requirements |
+| `EmissionERC20.sol` | Active | Time-gated ERC-20 emission schedule execution for EVM L1 and mirror environments that require an on-chain emission contract |
 
 Relay configuration and client initialization MUST reference the staking and credits contracts as the runtime integration boundary. Governance and operator tooling that updates operational parameters MUST reference `ParameterController.sol`.
 
@@ -57,6 +58,16 @@ Relay configuration and client initialization MUST reference the staking and cre
 ### `CrynuxToken.sol`
 
 `CrynuxToken.sol` MUST provide the ERC-20 Crynux token representation on the parent chain required by L2 rollup chain launch flows. It MUST remain outside task dispatching, task assignment, and task validation.
+
+### `EmissionERC20.sol`
+
+`EmissionERC20.sol` MUST hold the locked CNX emission inventory and release CNX by a fixed, hardcoded schedule. It MUST support `Primary` and `Mirror` modes selected at deployment time. The `daoTreasuryAddress` and `relayWalletColdAddress` MUST be constructor-configured and immutable after deployment.
+
+In `Primary` mode, each due emission period MUST distribute CNX between `daoTreasuryAddress` and `relayWalletColdAddress` by the configured year-based percentages. In `Mirror` mode, each due emission period MUST transfer all emitted CNX to `relayWalletColdAddress`, and MUST NOT transfer emission CNX to `daoTreasuryAddress`.
+
+The emission execution entrypoint MUST be public and time-gated. If one or more past periods were missed, later calls MUST release the next unpaid period in order until caught up. A completed period MUST NOT be released more than once.
+
+`EmissionERC20.sol` MUST be used for EVM-based L1 deployments. L2 MUST NOT deploy a separate token contract. When native CNX bridging from L1 to L2 exists, L2 MUST NOT deploy an emission contract. When native CNX bridging does not exist, L2 mirror emission MAY be implemented with `EmissionERC20.sol`.
 
 ## Legacy Contract Stack Retained in Repository
 
@@ -94,5 +105,6 @@ For the current production architecture, the source of truth for contract usage 
 3. the active staking and delegation flows implemented around `NodeStaking.sol`, `DelegatedStaking.sol`, `Credits.sol`, and `BenefitAddress.sol`
 4. the active governed parameter update flow implemented around `ParameterController.sol`
 5. the parent chain ERC-20 token deployment flow implemented around `CrynuxToken.sol`
+6. the active Primary and Mirror emission release flow implemented around `EmissionERC20.sol`
 
 The presence of additional contracts in this repository SHALL NOT imply active production usage.
