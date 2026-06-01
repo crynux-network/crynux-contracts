@@ -23,17 +23,14 @@ The legacy task consensus contracts listed as legacy in `contract-roles-and-stat
 
 - `Credits`
 - `BenefitAddress`
-- `DelegatedStaking`
 
 `Credits` MUST reference `NodeStaking` as its staking contract.
-
-`DelegatedStaking` MUST reference `NodeStaking` as its node staking contract.
 
 `Credits`, `DelegatedStaking`, and `NodeStaking` MUST each store a `parameterController` address and MUST accept governed operational parameter updates only from that controller after initialization.
 
 The `parameterController` address in each target contract MUST be initialized exactly once and MUST NOT be changed afterward.
 
-`Credits.stakingAddress` and `DelegatedStaking.nodeStakingAddress` MUST be initialized once during deployment and MUST NOT be changed afterward. These contract linkage addresses MUST NOT be controlled through `ParameterController`.
+`Credits.stakingAddress` MUST be initialized once during deployment and MUST NOT be changed afterward. This contract linkage address MUST NOT be controlled through `ParameterController`.
 
 `NodeStaking` MUST call `Credits.stakeCredits(address,uint256)` when bootstrap credits are moved into operator staking.
 
@@ -41,7 +38,7 @@ The `parameterController` address in each target contract MUST be initialized ex
 
 `NodeStaking` MUST read `BenefitAddress.getBenefitAddress(address)` before returning staked native balance. When a node has a configured benefit address, the returned native balance MUST be sent to that benefit address. When no benefit address is configured, the returned native balance MUST be sent to the node address.
 
-`NodeStaking` MUST call `DelegatedStaking.slashNode(address)` when a node is slashed, so delegated staking state for that node is cleared through the delegated staking contract.
+`NodeStaking` MUST NOT call `DelegatedStaking` when a node is slashed. Relay MUST process delegated slash separately after `NodeStaking.NodeSlashed` is confirmed.
 
 `NodeStaking` and `DelegatedStaking` MUST receive `slashReceiverAddress` in their constructors. Slashed native balance MUST be sent to that immutable receiver address.
 
@@ -66,10 +63,11 @@ The deployment parameter file for `DeployNodeContracts` MUST use this shape:
 }
 ```
 
-`relayOperatorAddress` MUST be the address that signs Relay runtime transactions for `NodeStaking`. This address is authorized to call:
+`relayOperatorAddress` MUST be the address that signs Relay runtime transactions for `NodeStaking` and `DelegatedStaking`. This address is authorized to call:
 
 - `NodeStaking.unstake(address)`
 - `NodeStaking.slashStaking(address)`
+- `DelegatedStaking.slashNodeDelegations(address,address[])`
 
 `creditsAdminAddress` MUST be the address that signs bootstrap credit issuance transactions for `Credits`. This address is authorized to call:
 
@@ -82,8 +80,4 @@ The deployment parameter file for `DeployNodeContracts` MUST use this shape:
 - `Credits.stakeCredits(address,uint256)`
 - `Credits.unstakeCredits(address,uint256)`
 
-`NodeStaking` MUST be the `nodeStakingAddress` configured in `DelegatedStaking`. This contract address is authorized to call:
-
-- `DelegatedStaking.slashNode(address)`
-
-Relay blockchain configuration MUST reference `BenefitAddress`, `Credits`, and `NodeStaking` for the corresponding L2 network.
+Relay blockchain configuration MUST reference `BenefitAddress`, `Credits`, `NodeStaking`, and `DelegatedStaking` for the corresponding L2 network.

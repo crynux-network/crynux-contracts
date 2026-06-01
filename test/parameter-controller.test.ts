@@ -26,7 +26,6 @@ async function deployContracts(ethers: any) {
     const nodeStaking = await ethers.deployContract("NodeStaking", [
         await credits.getAddress(),
         await benefitAddress.getAddress(),
-        await delegatedStaking.getAddress(),
         slashReceiver.address,
     ]);
     const parameterController = await ethers.deployContract("ParameterController", [
@@ -37,7 +36,6 @@ async function deployContracts(ethers: any) {
     ]);
 
     await credits.setStakingAddress(await nodeStaking.getAddress());
-    await delegatedStaking.setNodeStakingAddress(await nodeStaking.getAddress());
     await credits.setParameterController(await parameterController.getAddress());
     await delegatedStaking.setParameterController(
         await parameterController.getAddress()
@@ -71,7 +69,6 @@ describe("ParameterController", () => {
         const nodeStaking = await ethers.deployContract("NodeStaking", [
             await credits.getAddress(),
             deployer.address,
-            await delegatedStaking.getAddress(),
             deployer.address,
         ]);
 
@@ -88,11 +85,6 @@ describe("ParameterController", () => {
         await expect(
             credits.setStakingAddress(another.address)
         ).to.be.revertedWith("Staking address already set");
-
-        await delegatedStaking.setNodeStakingAddress(await nodeStaking.getAddress());
-        await expect(
-            delegatedStaking.setNodeStakingAddress(another.address)
-        ).to.be.revertedWith("Node staking address already set");
     });
 
     it("enforces writer-only controller updates", async () => {
@@ -103,6 +95,7 @@ describe("ParameterController", () => {
             credits,
             parameterController,
             nodeOperator,
+            delegatedStaking,
         } = await deployContracts(await getEthers());
 
         await expect(
@@ -115,8 +108,16 @@ describe("ParameterController", () => {
             .connect(writer)
             .setCreditsAdminAddress(creditsAdmin.address);
         await credits.connect(creditsAdmin).createCredits(nodeOperator.address, 11);
+        await parameterController
+            .connect(writer)
+            .setDelegatedStakingAdminAddress(nodeOperator.address);
 
         expect(await credits.getCredits(nodeOperator.address)).to.equal(11);
+        await expect(
+            delegatedStaking.connect(unauthorized).slashNodeDelegations(nodeOperator.address, [
+                unauthorized.address,
+            ])
+        ).to.be.revertedWith("Not called by the admin");
     });
 
     it("rejects direct owner writes after controller is initialized", async () => {
@@ -190,6 +191,9 @@ describe("ParameterController", () => {
         await parameterController
             .connect(writer)
             .setNodeStakingMinStakeAmount(1);
+        await parameterController
+            .connect(writer)
+            .setDelegatedStakingAdminAddress(relayAdmin.address);
 
         await nodeStaking.connect(nodeOperator).stake(1, { value: 1 });
         await delegatedStaking.connect(nodeOperator).setDelegatorShare(10);
@@ -201,6 +205,9 @@ describe("ParameterController", () => {
             slashReceiver.address
         );
         await nodeStaking.connect(relayAdmin).slashStaking(nodeOperator.address);
+        await delegatedStaking
+            .connect(relayAdmin)
+            .slashNodeDelegations(nodeOperator.address, [delegator.address]);
         const receiverBalanceAfter = await ethers.provider.getBalance(
             slashReceiver.address
         );

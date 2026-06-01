@@ -14,7 +14,6 @@ export default buildModule("DeployNodeContracts", (m) => {
     const nodeStaking = m.contract("NodeStaking", [
         credits,
         benefitAddress,
-        delegatedStaking,
         slashReceiverAddress,
     ]);
     const parameterController = m.contract("ParameterController", [
@@ -27,10 +26,6 @@ export default buildModule("DeployNodeContracts", (m) => {
     m.call(credits, "setStakingAddress", [nodeStaking], {
         id: "SetCreditsStakingAddress",
     });
-    m.call(delegatedStaking, "setNodeStakingAddress", [nodeStaking], {
-        id: "SetDelegatedStakingNodeStakingAddress",
-    });
-
     m.call(credits, "setParameterController", [parameterController], {
         id: "SetCreditsParameterController",
     });
@@ -46,6 +41,9 @@ export default buildModule("DeployNodeContracts", (m) => {
     });
     m.call(parameterController, "setNodeStakingAdminAddress", [relayOperatorAddress], {
         id: "SetNodeStakingAdminAddress",
+    });
+    m.call(parameterController, "setDelegatedStakingAdminAddress", [relayOperatorAddress], {
+        id: "SetDelegatedStakingAdminAddress",
     });
     return {
         credits,

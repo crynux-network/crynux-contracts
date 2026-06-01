@@ -77,7 +77,7 @@ For a single public sequencer, `coordinator.priorities` contains only that seque
 
 10. Run `npx tsx deployments/primary/testnet/crynux-on-base-sepolia/set-min-l2-base-fee.ts`. The script takes no CLI parameters and sets the configured minimum L2 base fee after the L2 RPC is reachable.
 11. Run `npx tsx deployments/primary/testnet/crynux-on-base-sepolia/create-token-bridge.ts`. The script takes no CLI parameters.
-12. Run `npx tsx deployments/primary/testnet/crynux-on-base-sepolia/deposit-base-cnx-to-crynux.ts <amount>`, where `<amount>` is the decimal CNX amount to deposit from Base Sepolia into Crynux on Base Sepolia.
+12. Run `npx tsx deployments/primary/testnet/crynux-on-base-sepolia/deposit-base-cnx-to-crynux.ts <amount>`, where `<amount>` is the decimal CNX amount, such as `1.5`, to deposit from Base Sepolia into Crynux on Base Sepolia.
 
 The rollup script deploys the Orbit core contracts on Base Sepolia and records them in `testnet/crynux-on-base-sepolia/contracts.json`. The DAC keyset script submits the generated AnyTrust keyset to the rollup `SequencerInbox`. The Nitro config script writes the public and private node config files from the recorded rollup contracts, DAC endpoints, and configured keys. The token bridge script deploys or reads the Orbit token bridge contracts from the recorded rollup contracts. The deposit script checks Base Sepolia CNX balance and allowance, approves the Orbit inbox when required, and deposits CNX to mint native CNX on Crynux on Base Sepolia.
 

@@ -12,6 +12,8 @@ interface INodeStakingParameters {
 }
 
 interface IDelegatedStakingParameters {
+    function setAdminAddress(address addr) external;
+
     function setMinStakeAmount(uint256 stakeAmount) external;
 }
 
@@ -29,6 +31,7 @@ contract ParameterController is Ownable {
     event NodeStakingAdminAddressUpdated(address indexed adminAddress);
     event NodeStakingMinStakeAmountUpdated(uint256 minStakeAmount);
     event NodeStakingForceUnstakeDelayUpdated(uint256 forceUnstakeDelay);
+    event DelegatedStakingAdminAddressUpdated(address indexed adminAddress);
     event DelegatedStakingMinStakeAmountUpdated(uint256 minStakeAmount);
     event CreditsAdminAddressUpdated(address indexed adminAddress);
 
@@ -76,6 +79,11 @@ contract ParameterController is Ownable {
     function setNodeStakingForceUnstakeDelay(uint256 delay) external onlyWriter {
         nodeStaking.setForceUnstakeDelay(delay);
         emit NodeStakingForceUnstakeDelayUpdated(delay);
+    }
+
+    function setDelegatedStakingAdminAddress(address addr) external onlyWriter {
+        delegatedStaking.setAdminAddress(addr);
+        emit DelegatedStakingAdminAddressUpdated(addr);
     }
 
     function setDelegatedStakingMinStakeAmount(

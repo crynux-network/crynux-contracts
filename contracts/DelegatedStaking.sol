@@ -23,8 +23,12 @@ contract DelegatedStaking is ParameterControlled {
         address nodeAddress,
         uint amount
     );
+    event DelegatorSlashed(
+        address indexed delegatorAddress,
+        address nodeAddress,
+        uint amount
+    );
     event NodeDelegatorShareChanged(address indexed nodeAddress, uint8 share);
-    event NodeSlashed(address indexed nodeAddress);
 
     EnumerableSet.AddressSet private availableNodes;
     mapping(address => uint8) private nodeDelegatorShare;
@@ -40,7 +44,7 @@ contract DelegatedStaking is ParameterControlled {
 
     uint private minStakeAmount = 400 * 10 ** 18;
 
-    address private nodeStakingAddress;
+    address private adminAddress;
     address private immutable slashReceiver;
 
     constructor(address slashReceiverAddress) {
@@ -59,25 +63,17 @@ contract DelegatedStaking is ParameterControlled {
         return minStakeAmount;
     }
 
-    function setNodeStakingAddress(
-        address addr
-    ) public onlyOwner {
-        require(
-            nodeStakingAddress == address(0),
-            "Node staking address already set"
-        );
-        require(addr != address(0), "Node staking address cannot be zero");
-        nodeStakingAddress = addr;
+    function setAdminAddress(address addr) external onlyParameterController {
+        require(addr != address(0), "admin address is zero");
+        adminAddress = addr;
     }
 
     function setDelegatorShare(uint8 share) public {
         require(share < 100, "share is larger than 100");
         nodeDelegatorShare[msg.sender] = share;
         emit NodeDelegatorShareChanged(msg.sender, share);
-        // withdraw all user staking on this node when the node closes user staing (set delegator share to 0)
         if (share == 0) {
             availableNodes.remove(msg.sender);
-            clearStakingOfNode(msg.sender, false);
         } else {
             availableNodes.add(msg.sender);
         }
@@ -160,22 +156,59 @@ contract DelegatedStaking is ParameterControlled {
         emit DelegatorUnstaked(msg.sender, nodeAddress, amount);
     }
 
-    function slashNode(address nodeAddress) public {
-        require(
-            msg.sender == nodeStakingAddress,
-            "Not called by node staking contract"
-        );
-        if (nodeAddresses.contains(nodeAddress)) {
-            clearStakingOfNode(nodeAddress, true);
-            emit NodeSlashed(nodeAddress);
-        }
-    }
-
     function withdrawStaking(address delegatorAddress, uint amount) private {
         require(amount > 0, "amount is 0");
 
         (bool success, ) = delegatorAddress.call{value: amount}("");
         require(success, "token transfer failed");
+    }
+
+    function slashNodeDelegations(
+        address nodeAddress,
+        address[] calldata delegators
+    ) public {
+        require(msg.sender == adminAddress, "Not called by the admin");
+        require(delegators.length > 0, "delegators is empty");
+
+        uint totalSlashed = 0;
+        for (uint i = 0; i < delegators.length; i++) {
+            address delegatorAddress = delegators[i];
+            bytes32 stakingInfoID = keccak256(
+                abi.encodePacked(delegatorAddress, nodeAddress)
+            );
+            require(
+                stakingInfos[stakingInfoID].stakeAmount > 0,
+                "no such staking info"
+            );
+            require(
+                userIndex[delegatorAddress].contains(stakingInfoID),
+                "no such staking info"
+            );
+            require(
+                nodeIndex[nodeAddress].contains(stakingInfoID),
+                "no such staking info"
+            );
+
+            uint amount = stakingInfos[stakingInfoID].stakeAmount;
+            userIndex[delegatorAddress].remove(stakingInfoID);
+            if (userIndex[delegatorAddress].length() == 0) {
+                delegatorAddresses.remove(delegatorAddress);
+            }
+            nodeIndex[nodeAddress].remove(stakingInfoID);
+            if (nodeIndex[nodeAddress].length() == 0) {
+                nodeAddresses.remove(nodeAddress);
+            }
+            delegatorStakeAmount[delegatorAddress] -= amount;
+            nodeStakeAmount[nodeAddress] -= amount;
+            totalSlashed += amount;
+
+            delete stakingInfos[stakingInfoID];
+            emit DelegatorSlashed(delegatorAddress, nodeAddress, amount);
+        }
+        if (nodeStakeAmount[nodeAddress] == 0) {
+            delete nodeStakeAmount[nodeAddress];
+        }
+        slashStaking(totalSlashed);
     }
 
     function slashStaking(uint amount) private {
@@ -186,43 +219,42 @@ contract DelegatedStaking is ParameterControlled {
         require(success, "token transfer failed");
     }
 
-    function clearStakingOfNode(address nodeAddress, bool slash) private {
-        bytes32[] memory stakingInfoIDs = nodeIndex[nodeAddress].values();
-        for (uint i = 0; i < stakingInfoIDs.length; i++) {
-            bytes32 stakingInfoID = stakingInfoIDs[i];
-            address delegatorAddress = stakingInfos[stakingInfoID].delegatorAddress;
-            uint amount = stakingInfos[stakingInfoID].stakeAmount;
-            userIndex[delegatorAddress].remove(stakingInfoID);
-            if (userIndex[delegatorAddress].length() == 0) {
-                delegatorAddresses.remove(delegatorAddress);
-            }
-            delegatorStakeAmount[delegatorAddress] -= amount;
-            nodeIndex[nodeAddress].remove(stakingInfoID);
-            if (slash) {
-                slashStaking(amount);
-            } else {
-                withdrawStaking(delegatorAddress, amount);
-            }
-            delete stakingInfos[stakingInfoID];
-        }
-        nodeAddresses.remove(nodeAddress);
-        delete nodeStakeAmount[nodeAddress];
-    }
-
     function getNodeDelegatorShare(
         address nodeAddress
     ) public view returns (uint8) {
         return nodeDelegatorShare[nodeAddress];
     }
 
-    function getAllNodeDelegatorShares()
+    function getDelegatableNodeCount() public view returns (uint) {
+        return availableNodes.length();
+    }
+
+    function getDelegatableNodes(
+        uint256 page,
+        uint256 pageSize
+    )
         public
         view
         returns (address[] memory, uint8[] memory)
     {
-        address[] memory nodes = availableNodes.values();
+        require(page > 0, "page is 0");
+        require(pageSize > 0 && pageSize <= 200, "invalid page size");
+
+        uint256 total = availableNodes.length();
+        uint256 start = (page - 1) * pageSize;
+        if (start >= total) {
+            return (new address[](0), new uint8[](0));
+        }
+
+        uint256 end = start + pageSize;
+        if (end > total) {
+            end = total;
+        }
+
+        address[] memory nodes = new address[](end - start);
         uint8[] memory shares = new uint8[](nodes.length);
         for (uint i = 0; i < nodes.length; i++) {
+            nodes[i] = availableNodes.at(start + i);
             shares[i] = nodeDelegatorShare[nodes[i]];
         }
         return (nodes, shares);
@@ -239,16 +271,34 @@ contract DelegatedStaking is ParameterControlled {
         return amount;
     }
 
+    function getNodeStakingInfoCount(address nodeAddress) public view returns (uint) {
+        return nodeIndex[nodeAddress].length();
+    }
+
     function getNodeStakingInfos(
-        address nodeAddress
+        address nodeAddress,
+        uint256 page,
+        uint256 pageSize
     ) public view returns (address[] memory, uint[] memory) {
-        uint length = nodeIndex[nodeAddress].length();
+        require(page > 0, "page is 0");
+        require(pageSize > 0 && pageSize <= 200, "invalid page size");
 
-        address[] memory addresses = new address[](length);
-        uint[] memory amounts = new uint[](length);
+        uint256 total = nodeIndex[nodeAddress].length();
+        uint256 start = (page - 1) * pageSize;
+        if (start >= total) {
+            return (new address[](0), new uint[](0));
+        }
 
-        for (uint i = 0; i < length; i++) {
-            bytes32 stakingInfoID = nodeIndex[nodeAddress].at(i);
+        uint256 end = start + pageSize;
+        if (end > total) {
+            end = total;
+        }
+
+        address[] memory addresses = new address[](end - start);
+        uint[] memory amounts = new uint[](end - start);
+
+        for (uint i = 0; i < addresses.length; i++) {
+            bytes32 stakingInfoID = nodeIndex[nodeAddress].at(start + i);
             addresses[i] = stakingInfos[stakingInfoID].delegatorAddress;
             amounts[i] = stakingInfos[stakingInfoID].stakeAmount;
         }

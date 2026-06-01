@@ -3,7 +3,6 @@ pragma solidity ^0.8.18;
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./Credits.sol";
 import "./BenefitAddress.sol";
-import "./DelegatedStaking.sol";
 import "./ParameterControlled.sol";
 
 contract NodeStaking is ParameterControlled {
@@ -49,21 +48,17 @@ contract NodeStaking is ParameterControlled {
 
     Credits private credits;
     BenefitAddress private ba;
-    DelegatedStaking private ds;
-
     address private adminAddress;
     address private immutable slashReceiver;
 
     constructor(
         address creditsContract,
         address benefitAddressContract,
-        address delegatedStakingContract,
         address slashReceiverAddress
     ) {
         require(slashReceiverAddress != address(0), "slash receiver is zero");
         credits = Credits(creditsContract);
         ba = BenefitAddress(benefitAddressContract);
-        ds = DelegatedStaking(delegatedStakingContract);
         slashReceiver = slashReceiverAddress;
     }
 
@@ -230,7 +225,6 @@ contract NodeStaking is ParameterControlled {
             (bool success, ) = slashReceiver.call{value: stakedBalance}("");
             require(success, "Token transfer failed");
         }
-        ds.slashNode(nodeAddress);
         // remove node
         allNodeAddresses.remove(nodeAddress);
         delete nodeStakingMap[nodeAddress];
