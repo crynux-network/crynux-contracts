@@ -1,5 +1,4 @@
 import {
-  createTokenBridgeDefaultRetryablesFees,
   createTokenBridgeFetchTokenBridgeContracts,
   createTokenBridgePrepareCustomFeeTokenApprovalTransactionRequest,
   createTokenBridgePrepareTransactionReceipt,
@@ -8,18 +7,20 @@ import {
   isTokenBridgeDeployed,
   utils,
 } from '@arbitrum/chain-sdk';
-import { formatUnits } from 'viem';
+import { formatUnits, parseUnits } from 'viem';
 import {
-  deploymentConfig,
+  getBaseCrynuxTokenAddress,
   getCoreContracts,
-  getRollupDeployerAccount,
+  getDeployerAccount,
   orbitChainPublicClient,
   parentChainPublicClient,
 } from './common.js';
 
-const rollupDeployer = await getRollupDeployerAccount();
+const deployer = await getDeployerAccount();
 const coreContracts = getCoreContracts();
 const tokenBridgeCreator = utils.getTokenBridgeCreatorAddress(parentChainPublicClient);
+const baseCrynuxTokenAddress = getBaseCrynuxTokenAddress();
+const tokenBridgeRequiredAllowance = parseUnits('1', 18);
 
 const isDeployed = await isTokenBridgeDeployed({
   parentChainPublicClient,
@@ -27,18 +28,10 @@ const isDeployed = await isTokenBridgeDeployed({
   rollup: coreContracts.rollup,
 });
 
-if (isDeployed) {
-  const tokenBridgeContracts = await createTokenBridgeFetchTokenBridgeContracts({
-    inbox: coreContracts.inbox,
-    parentChainPublicClient,
-  });
-
-  console.log('Token bridge contracts are already deployed:');
-  console.log(JSON.stringify(tokenBridgeContracts, null, 2));
-} else {
+if (!isDeployed) {
   const currentAllowance = await fetchAllowance({
-    address: deploymentConfig.l1CrynuxTokenAddress,
-    owner: rollupDeployer.address,
+    address: baseCrynuxTokenAddress,
+    owner: deployer.address,
     spender: tokenBridgeCreator,
     publicClient: parentChainPublicClient,
   });
@@ -47,10 +40,10 @@ if (isDeployed) {
   console.log(
     JSON.stringify(
       {
-        owner: rollupDeployer.address,
+        owner: deployer.address,
         spender: tokenBridgeCreator,
-        token: deploymentConfig.l1CrynuxTokenAddress,
-        requiredAllowance: formatUnits(createTokenBridgeDefaultRetryablesFees, 18),
+        token: baseCrynuxTokenAddress,
+        requiredAllowance: formatUnits(tokenBridgeRequiredAllowance, 18),
         currentAllowance: formatUnits(currentAllowance, 18),
       },
       null,
@@ -58,14 +51,15 @@ if (isDeployed) {
     ),
   );
 
-  if (currentAllowance < createTokenBridgeDefaultRetryablesFees) {
+  if (currentAllowance < tokenBridgeRequiredAllowance) {
     const approvalTransactionRequest = await createTokenBridgePrepareCustomFeeTokenApprovalTransactionRequest({
-      nativeToken: deploymentConfig.l1CrynuxTokenAddress,
-      owner: rollupDeployer.address,
+      amount: tokenBridgeRequiredAllowance,
+      nativeToken: baseCrynuxTokenAddress,
+      owner: deployer.address,
       publicClient: parentChainPublicClient,
     });
     const approvalTransactionHash = await parentChainPublicClient.sendRawTransaction({
-      serializedTransaction: await rollupDeployer.signTransaction(approvalTransactionRequest),
+      serializedTransaction: await deployer.signTransaction(approvalTransactionRequest),
     });
     const approvalTransactionReceipt = await parentChainPublicClient.waitForTransactionReceipt({
       hash: approvalTransactionHash,
@@ -75,23 +69,21 @@ if (isDeployed) {
     console.log(
       JSON.stringify(approvalTransactionReceipt, (_key, value) => (typeof value === 'bigint' ? value.toString() : value), 2),
     );
-  } else {
-    console.log('Allowance is already sufficient. Skipping approve transaction.');
   }
 
   const createTokenBridgeTransactionRequest = await createTokenBridgePrepareTransactionRequest({
     params: {
       rollup: coreContracts.rollup,
-      rollupOwner: rollupDeployer.address,
+      rollupOwner: deployer.address,
     },
     parentChainPublicClient,
     orbitChainPublicClient,
-    account: rollupDeployer.address,
+    account: deployer.address,
   });
 
   console.log('Deploying the TokenBridge...');
   const createTokenBridgeTransactionHash = await parentChainPublicClient.sendRawTransaction({
-    serializedTransaction: await rollupDeployer.signTransaction(createTokenBridgeTransactionRequest),
+    serializedTransaction: await deployer.signTransaction(createTokenBridgeTransactionRequest),
   });
   const createTokenBridgeTransactionReceipt = createTokenBridgePrepareTransactionReceipt(
     await parentChainPublicClient.waitForTransactionReceipt({ hash: createTokenBridgeTransactionHash }),
@@ -112,12 +104,14 @@ if (isDeployed) {
       throw new Error(`Retryable ${index + 1} status is not success: ${retryableReceipt.status}.`);
     }
   }
-
-  const tokenBridgeContracts = await createTokenBridgeFetchTokenBridgeContracts({
-    inbox: coreContracts.inbox,
-    parentChainPublicClient,
-  });
-
-  console.log('Token bridge contracts:');
-  console.log(JSON.stringify(tokenBridgeContracts, null, 2));
+} else {
+  console.log('Token bridge contracts are already deployed.');
 }
+
+const tokenBridgeContracts = await createTokenBridgeFetchTokenBridgeContracts({
+  inbox: coreContracts.inbox,
+  parentChainPublicClient,
+});
+
+console.log('Token bridge contracts:');
+console.log(JSON.stringify(tokenBridgeContracts, null, 2));

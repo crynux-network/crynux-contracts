@@ -11,24 +11,25 @@ import { Wallet } from '@ethersproject/wallet';
 import { formatUnits, parseAbi, parseUnits } from 'viem';
 import {
   deploymentConfig,
-  getConfiguredRollupDeployerPrivateKey,
+  getBaseCrynuxTokenAddress,
+  getConfiguredDeployerPrivateKey,
   getCoreContracts,
-  getRollupDeployerAccount,
+  getDeployerAccount,
   orbitChainPublicClient,
   orbitChainRpcUrl,
   parentChainPublicClient,
   parentChainRpcUrl,
 } from './common.js';
 
-const erc20Abi = parseAbi([
-  'function allowance(address owner, address spender) view returns (uint256)',
-  'function balanceOf(address account) view returns (uint256)',
-]);
-
+const erc20Abi = parseAbi(['function balanceOf(address account) view returns (uint256)']);
 const depositAmountInput = process.argv[2];
 
 if (depositAmountInput === undefined) {
-  throw new Error('Usage: npx tsx deployments/base-sepolia/deposit-crynux-token-to-l2.ts <amount>');
+  throw new Error('Usage: npx tsx deployments/primary/testnet/crynux-on-base-sepolia/deposit-base-cnx-to-crynux.ts <amount>');
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 const depositAmount = parseUnits(depositAmountInput, 18);
@@ -37,22 +38,23 @@ if (depositAmount <= 0n) {
   throw new Error('Deposit amount must be greater than zero.');
 }
 
-const rollupDeployer = await getRollupDeployerAccount();
+const deployer = await getDeployerAccount();
 const parentChainProvider = new JsonRpcProvider(parentChainRpcUrl);
 const orbitChainProvider = new JsonRpcProvider(orbitChainRpcUrl);
-const parentChainSigner = new Wallet(await getConfiguredRollupDeployerPrivateKey(), parentChainProvider);
+const parentChainSigner = new Wallet(await getConfiguredDeployerPrivateKey(), parentChainProvider);
 const coreContracts = getCoreContracts();
+const baseCrynuxTokenAddress = getBaseCrynuxTokenAddress();
 
-const l1BalanceBefore = await parentChainPublicClient.readContract({
-  address: deploymentConfig.l1CrynuxTokenAddress,
+const parentBalanceBefore = await parentChainPublicClient.readContract({
+  address: baseCrynuxTokenAddress,
   abi: erc20Abi,
   functionName: 'balanceOf',
-  args: [rollupDeployer.address],
+  args: [deployer.address],
 });
 
-if (l1BalanceBefore < depositAmount) {
+if (parentBalanceBefore < depositAmount) {
   throw new Error(
-    `Insufficient L1 CNX balance. Required ${formatUnits(depositAmount, 18)}, available ${formatUnits(l1BalanceBefore, 18)}.`,
+    `Insufficient Base Sepolia CNX balance. Required ${formatUnits(depositAmount, 18)}, available ${formatUnits(parentBalanceBefore, 18)}.`,
   );
 }
 
@@ -62,8 +64,8 @@ const tokenBridgeContracts = await createTokenBridgeFetchTokenBridgeContracts({
   parentChainPublicClient,
 });
 const arbitrumNetwork: ArbitrumNetwork = {
-  name: 'Crynux on Base Sepolia',
-  chainId: deploymentConfig.l2ChainId,
+  name: deploymentConfig.name,
+  chainId: deploymentConfig.chainId,
   parentChainId: arbitrumNetworkInformation.parentChainId,
   confirmPeriodBlocks: arbitrumNetworkInformation.confirmPeriodBlocks,
   ethBridge: arbitrumNetworkInformation.ethBridge,
@@ -87,33 +89,29 @@ const arbitrumNetwork: ArbitrumNetwork = {
 };
 registerCustomArbitrumNetwork(arbitrumNetwork);
 
-if (arbitrumNetwork.nativeToken?.toLowerCase() !== deploymentConfig.l1CrynuxTokenAddress.toLowerCase()) {
-  throw new Error(
-    `Expected the Orbit native token to be ${deploymentConfig.l1CrynuxTokenAddress}, but got ${arbitrumNetwork.nativeToken ?? 'ETH'}.`,
-  );
+if (arbitrumNetwork.nativeToken?.toLowerCase() !== baseCrynuxTokenAddress.toLowerCase()) {
+  throw new Error(`Expected native token ${baseCrynuxTokenAddress}, got ${arbitrumNetwork.nativeToken ?? 'ETH'}.`);
 }
 
 const ethBridger = await EthBridger.fromProvider(orbitChainProvider);
-const l2BalanceBefore = await orbitChainPublicClient.getBalance({
-  address: rollupDeployer.address,
-});
+const childBalanceBefore = await orbitChainPublicClient.getBalance({ address: deployer.address });
 const currentAllowance = await fetchAllowance({
-  address: deploymentConfig.l1CrynuxTokenAddress,
-  owner: rollupDeployer.address,
+  address: baseCrynuxTokenAddress,
+  owner: deployer.address,
   spender: coreContracts.inbox,
   publicClient: parentChainPublicClient,
 });
 
-console.log('Crynux token L1 to L2 deposit state:');
+console.log('Base Sepolia CNX to Crynux on Base Sepolia deposit state:');
 console.log(
   JSON.stringify(
     {
-      account: rollupDeployer.address,
-      token: deploymentConfig.l1CrynuxTokenAddress,
+      account: deployer.address,
+      token: baseCrynuxTokenAddress,
       inbox: coreContracts.inbox,
       amount: formatUnits(depositAmount, 18),
-      l1BalanceBefore: formatUnits(l1BalanceBefore, 18),
-      l2NativeBalanceBefore: formatUnits(l2BalanceBefore, 18),
+      parentBalanceBefore: formatUnits(parentBalanceBefore, 18),
+      childNativeBalanceBefore: formatUnits(childBalanceBefore, 18),
       currentAllowance: formatUnits(currentAllowance, 18),
     },
     null,
@@ -128,20 +126,9 @@ if (currentAllowance < depositAmount) {
   });
   const approveTransactionReceipt = await approveTransaction.wait();
 
-  console.log('Crynux token approve transaction receipt:');
-  console.log(
-    JSON.stringify(
-      {
-        transactionHash: approveTransactionReceipt.transactionHash,
-        status: approveTransactionReceipt.status,
-        blockNumber: approveTransactionReceipt.blockNumber,
-      },
-      null,
-      2,
-    ),
-  );
-} else {
-  console.log('Allowance is already sufficient. Skipping approve transaction.');
+  console.log('Base Sepolia CNX approve transaction receipt:');
+  console.log(JSON.stringify(approveTransactionReceipt, (_key, value) => (typeof value === 'bigint' ? value.toString() : value), 2));
+  await sleep(30_000);
 }
 
 const depositTransaction = await ethBridger.deposit({
@@ -150,53 +137,13 @@ const depositTransaction = await ethBridger.deposit({
 });
 const depositTransactionReceipt = await depositTransaction.wait();
 
-console.log('Crynux token deposit transaction receipt:');
-console.log(
-  JSON.stringify(
-    {
-      transactionHash: depositTransactionReceipt.transactionHash,
-      status: depositTransactionReceipt.status,
-      blockNumber: depositTransactionReceipt.blockNumber,
-    },
-    null,
-    2,
-  ),
-);
+console.log('Base Sepolia CNX deposit transaction receipt:');
+console.log(JSON.stringify(depositTransactionReceipt, (_key, value) => (typeof value === 'bigint' ? value.toString() : value), 2));
 
 const childTransactionReceipt = await depositTransactionReceipt.waitForChildTransactionReceipt(orbitChainProvider);
 
 if (!childTransactionReceipt.complete) {
-  throw new Error('L2 deposit did not complete.');
+  throw new Error('Crynux on Base Sepolia deposit did not complete.');
 }
 
-const expectedL2Balance = l2BalanceBefore + depositAmount;
-const maxAttempts = 120;
-const pollIntervalMs = 5000;
-
-for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-  const l2BalanceAfter = await orbitChainPublicClient.getBalance({
-    address: rollupDeployer.address,
-  });
-
-  if (l2BalanceAfter >= expectedL2Balance) {
-    console.log('Crynux token deposit confirmed on L2:');
-    console.log(
-      JSON.stringify(
-        {
-          account: rollupDeployer.address,
-          amount: formatUnits(depositAmount, 18),
-          l2NativeBalanceBefore: formatUnits(l2BalanceBefore, 18),
-          l2NativeBalanceAfter: formatUnits(l2BalanceAfter, 18),
-        },
-        null,
-        2,
-      ),
-    );
-    process.exit(0);
-  }
-
-  console.log(`Waiting for L2 balance update (${attempt}/${maxAttempts})...`);
-  await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
-}
-
-throw new Error('Timed out while waiting for the L2 native balance to reflect the Crynux token deposit.');
+console.log('Crynux on Base Sepolia deposit completed.');

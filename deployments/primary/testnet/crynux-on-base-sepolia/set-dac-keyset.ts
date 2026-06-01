@@ -1,11 +1,6 @@
 import { prepareKeysetHash, setValidKeysetPrepareTransactionRequest } from '@arbitrum/chain-sdk';
 import { parseAbi } from 'viem';
-import {
-  getDacCoreContracts,
-  getDacKeyset,
-  getRollupDeployerAccount,
-  parentChainPublicClient,
-} from './common.js';
+import { getDacCoreContracts, getDacKeyset, getDeployerAccount, parentChainPublicClient } from './common.js';
 
 const sequencerInboxDacAbi = parseAbi([
   'error NoSuchKeyset(bytes32 keysetHash)',
@@ -13,6 +8,8 @@ const sequencerInboxDacAbi = parseAbi([
   'function dasKeySetInfo(bytes32 ksHash) view returns (bool isValidKeyset, uint64 creationBlock)',
   'function getKeysetCreationBlock(bytes32 ksHash) view returns (uint256)',
 ]);
+
+const coreContracts = getDacCoreContracts();
 
 async function printDacKeysetState(keysetHash: `0x${string}`) {
   const isValidKeysetHash = await parentChainPublicClient.readContract({
@@ -75,9 +72,7 @@ async function printDacKeysetState(keysetHash: `0x${string}`) {
   return isValidKeysetHash;
 }
 
-const rollupDeployer = await getRollupDeployerAccount();
-
-const coreContracts = getDacCoreContracts();
+const deployer = await getDeployerAccount();
 const keyset = getDacKeyset();
 const keysetHash = prepareKeysetHash(keyset);
 
@@ -93,12 +88,12 @@ if (isAlreadyValid) {
 const transactionRequest = await setValidKeysetPrepareTransactionRequest({
   coreContracts,
   keyset,
-  account: rollupDeployer.address,
+  account: deployer.address,
   publicClient: parentChainPublicClient,
 });
 
 const hash = await parentChainPublicClient.sendRawTransaction({
-  serializedTransaction: await rollupDeployer.signTransaction(transactionRequest),
+  serializedTransaction: await deployer.signTransaction(transactionRequest),
 });
 const transactionReceipt = await parentChainPublicClient.waitForTransactionReceipt({ hash });
 

@@ -11,7 +11,7 @@ if (-not (Test-Path -Path $keyDir)) {
 docker run --rm -v "${keyDir}:/data/keys" --entrypoint anytrusttool $nitroNodeImage keygen --dir /data/keys
 
 if ($LASTEXITCODE -ne 0) {
-    throw "Failed to generate DAS key pair."
+    throw "Failed to generate the DAS key pair."
 }
 
 $publicKey = (Get-Content -Raw -Path (Join-Path $keyDir "das_bls.pub")).Trim()

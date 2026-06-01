@@ -1,0 +1,25 @@
+{
+  "chainId": 188962142,
+  "name": "Crynux on Base Sepolia",
+  "rpcUrl": "https://json-rpc.base-sepolia.crynux.io",
+  "minL2BaseFee": 700000000,
+  "dacKeyset": {
+    "assumed-honest": 1,
+    "backends": [
+      {
+        "url": "https://rpc.das.base-sepolia.crynux.io",
+        "pubkey": ""
+      }
+    ]
+  },
+  "dacRestUrls": ["https://rest.das.base-sepolia.crynux.io"],
+  "generatedDacKeyset": {
+    "keyset": "",
+    "keysetHash": ""
+  },
+  "production": {
+    "redisPassword": "change-it",
+    "publicSequencerUrl": "https://json-rpc.base-sepolia.crynux.io",
+    "privateRedisHost": "<public-rpc-sequencer-host>"
+  }
+}

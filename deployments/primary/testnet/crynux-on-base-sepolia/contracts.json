@@ -1,0 +1,16 @@
+{
+  "coreContracts": {
+    "rollup": "0xa04a5B4e42f4aDf94ee28ed4168F039d9EBc88F3",
+    "inbox": "0x4688D74f276E8E4c53b6CA74d026aa15f09750c9",
+    "nativeToken": "0x29d09B6778A40C71A1f75c64bc08e4b325e97e54",
+    "outbox": "0xfbe2159ad4504eF5146C61A96e4d6E4a142E0bA2",
+    "rollupEventInbox": "0x3eD7aBc0bA0346e296D6F6FEC82D06aD7FA0C74A",
+    "challengeManager": "0xa34C55B9f14a6f4221b52663C846aD7d69927C79",
+    "adminProxy": "0xFb511Da9783987a0784402e75230332bFC2B7926",
+    "sequencerInbox": "0x8f5EA444D28E452726a78c666D41CFfB9e2E6D76",
+    "bridge": "0x4529e207989413988eA91f8B1E944eB093D1ADae",
+    "upgradeExecutor": "0x26BD4D2bd170C260ea97fc68918e897f6Ea66A61",
+    "validatorWalletCreator": "0xB7FE37712e46F28C8f22Ec4bAA33A09fb8B52BD0",
+    "deployedAtBlockNumber": 42255144
+  }
+}

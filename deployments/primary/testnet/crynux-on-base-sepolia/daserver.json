@@ -1,0 +1,24 @@
+{
+  "parent-chain": {
+    "node-url": "https://sepolia.base.org",
+    "sequencer-inbox-address": ""
+  },
+  "data-availability": {
+    "key": {
+      "key-dir": "/home/user/data/keys"
+    },
+    "local-cache": {
+      "enable": true
+    },
+    "local-file-storage": {
+      "enable": true,
+      "data-dir": "/home/user/data/das-data"
+    }
+  },
+  "enable-rpc": true,
+  "rpc-addr": "0.0.0.0",
+  "rpc-port": 8545,
+  "enable-rest": true,
+  "rest-addr": "0.0.0.0",
+  "rest-port": 8546
+}

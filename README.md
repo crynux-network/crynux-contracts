@@ -60,8 +60,8 @@ Create a deployment parameter file for the emission contract:
         "relayWalletColdAddress": "0x0000000000000000000000000000000000000003",
         "startTimestamp": 1735689600,
         "initialEmissionIndex": 0,
-        "initCost": 0,
-        "fundingAmount": "8617333262000000000000000000"
+        "initCostCNX": 0,
+        "fundingAmountWei": "8617333262000000000000000000"
     }
 }
 ```
@@ -74,8 +74,8 @@ Parameter requirements:
 - `relayWalletColdAddress`: immutable relay cold wallet receiver address.
 - `startTimestamp`: emission schedule start timestamp in seconds.
 - `initialEmissionIndex`: number of already completed emission periods when the contract is deployed.
-- `initCost`: startup cost in whole CNX units, deducted from the first DAO emission in Primary mode. Mirror mode requires this to be `0`.
-- `fundingAmount`: amount of CNX token units transferred from deployer to `EmissionERC20` during deployment.
+- `initCostCNX`: startup cost in whole CNX units, deducted from the first DAO emission in Primary mode. Mirror mode requires this to be `0`.
+- `fundingAmountWei`: amount of CNX token units transferred from deployer to `EmissionERC20` during deployment.
 
 Deploy the emission contract with Hardhat Ignition:
 

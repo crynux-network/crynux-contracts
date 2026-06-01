@@ -1,5 +1,6 @@
 import { configVariable, defineConfig } from "hardhat/config";
 import hardhatToolboxMochaEthers from "@nomicfoundation/hardhat-toolbox-mocha-ethers";
+import { mainnet as ethereum, sepolia as ethereumSepolia, base, baseSepolia } from "viem/chains";
 
 const solidityConfig = {
     version: "0.8.24",
@@ -12,8 +13,10 @@ const solidityConfig = {
     },
 };
 
-const baseRpcUrl = process.env.BASE_RPC_URL ?? "https://mainnet.base.org";
-const baseSepoliaRpcUrl = process.env.BASE_SEPOLIA_RPC_URL ?? "https://sepolia.base.org";
+const baseRpcUrl = process.env.BASE_RPC_URL ?? base.rpcUrls.default.http[0];
+const baseSepoliaRpcUrl = process.env.BASE_SEPOLIA_RPC_URL ?? baseSepolia.rpcUrls.default.http[0];
+const ethereumRpcUrl = process.env.ETHEREUM_RPC_URL ?? ethereum.rpcUrls.default.http[0];
+const ethereumSepoliaRpcUrl = process.env.ETHEREUM_SEPOLIA_RPC_URL ?? "https://ethereum-sepolia-rpc.publicnode.com";
 const ignitionRequiredConfirmations = Number(process.env.IGNITION_REQUIRED_CONFIRMATIONS ?? "5");
 
 export default defineConfig({
@@ -28,20 +31,34 @@ export default defineConfig({
         },
     },
     networks: {
+        ethereum: {
+            type: "http",
+            chainType: "generic",
+            chainId: ethereum.id,
+            url: ethereumRpcUrl,
+            accounts: [configVariable("DEPLOYER_PRIVATE_KEY")],
+        },
+        ethereumSepolia: {
+            type: "http",
+            chainType: "generic",
+            chainId: ethereumSepolia.id,
+            url: ethereumSepoliaRpcUrl,
+            accounts: [configVariable("DEPLOYER_PRIVATE_KEY")],
+        },
         base: {
             type: "http",
             chainType: "op",
-            chainId: 8453,
+            chainId: base.id,
             url: baseRpcUrl,
-            accounts: [configVariable("L2_ROLLUP_DEPLOYER_PRIVATE_KEY")],
+            accounts: [configVariable("DEPLOYER_PRIVATE_KEY")],
         },
         baseSepolia: {
             type: "http",
             chainType: "op",
-            chainId: 84532,
+            chainId: baseSepolia.id,
             url: baseSepoliaRpcUrl,
             accounts: [
-                configVariable("L2_ROLLUP_DEPLOYER_PRIVATE_KEY"),
+                configVariable("DEPLOYER_PRIVATE_KEY"),
                 configVariable("L2_BATCH_POSTER_PRIVATE_KEY"),
                 configVariable("L2_VALIDATOR_PRIVATE_KEY"),
             ],
@@ -49,10 +66,10 @@ export default defineConfig({
         crynuxOnBaseSepolia: {
             type: "http",
             chainType: "generic",
-            chainId: 18896213,
-            url: "http://127.0.0.1:8449",
+            chainId: 188962142,
+            url: "https://json-rpc.base-sepolia.crynux.io",
             accounts: [
-                configVariable("L2_ROLLUP_DEPLOYER_PRIVATE_KEY"),
+                configVariable("DEPLOYER_PRIVATE_KEY"),
             ],
         },
     },

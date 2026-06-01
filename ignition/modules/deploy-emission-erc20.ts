@@ -7,8 +7,8 @@ export default buildModule("DeployEmissionErc20", (m) => {
     const relayWalletColdAddress = m.getParameter("relayWalletColdAddress");
     const startTimestamp = m.getParameter("startTimestamp");
     const initialEmissionIndex = m.getParameter("initialEmissionIndex");
-    const initCost = m.getParameter("initCost");
-    const fundingAmount = m.getParameter("fundingAmount");
+    const initCostCNX = m.getParameter("initCostCNX");
+    const fundingAmountWei = m.getParameter("fundingAmountWei");
 
     const emissionERC20 = m.contract("EmissionERC20", [
         tokenAddress,
@@ -17,16 +17,17 @@ export default buildModule("DeployEmissionErc20", (m) => {
         relayWalletColdAddress,
         startTimestamp,
         initialEmissionIndex,
-        initCost,
+        initCostCNX,
     ]);
 
-    const token = m.contractAt("CrynuxToken", tokenAddress);
-    m.call(token, "transfer", [emissionERC20, fundingAmount], {
+    const token = m.contractAt("CrynuxToken", tokenAddress, {
+        id: "ExistingCrynuxToken",
+    });
+    m.call(token, "transfer", [emissionERC20, fundingAmountWei], {
         id: "FundEmissionERC20",
     });
 
     return {
-        token,
         emissionERC20,
     };
 });

@@ -1,0 +1,40 @@
+services:
+  init-nitro-volume:
+    image: alpine:latest
+    restart: "no"
+    command:
+      - sh
+      - -lc
+      - chown -R 1000:1000 /nitro-data
+    volumes:
+      - type: volume
+        source: nitro-data
+        target: /nitro-data
+        volume:
+          nocopy: true
+
+  private-operators:
+    image: offchainlabs/nitro-node:v3.10.1-d7f07be
+    container_name: base-sepolia-node
+    restart: unless-stopped
+    stop_grace_period: 30m
+    depends_on:
+      init-nitro-volume:
+        condition: service_completed_successfully
+    volumes:
+      - type: volume
+        source: nitro-data
+        target: /home/user/.arbitrum
+        volume:
+          nocopy: true
+      - ./nitro-node/nitro-node.private.json:/home/user/.arbitrum/nitro-node.json:ro
+    entrypoint:
+      - nitro
+    command:
+      - --conf.file
+      - /home/user/.arbitrum/nitro-node.json
+    environment:
+      GOMEMLIMIT: 4GiB
+
+volumes:
+  nitro-data:
