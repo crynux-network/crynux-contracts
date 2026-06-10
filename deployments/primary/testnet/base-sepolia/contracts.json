@@ -1,4 +1,6 @@
 {
   "baseCrynuxTokenAddress": "0x29d09B6778A40C71A1f75c64bc08e4b325e97e54",
-  "createdAtBlockNumber": 42253199
+  "benefitAddress": "0x22083fA234Cf2a22801527aCD6bFF158e14614f2",
+  "createdAtBlockNumber": 42253199,
+  "benefitAddressDeployedAtBlockNumber": 42435398
 }

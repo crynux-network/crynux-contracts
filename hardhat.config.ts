@@ -17,7 +17,7 @@ const baseRpcUrl = process.env.BASE_RPC_URL ?? base.rpcUrls.default.http[0];
 const baseSepoliaRpcUrl = process.env.BASE_SEPOLIA_RPC_URL ?? baseSepolia.rpcUrls.default.http[0];
 const ethereumRpcUrl = process.env.ETHEREUM_RPC_URL ?? ethereum.rpcUrls.default.http[0];
 const ethereumSepoliaRpcUrl = process.env.ETHEREUM_SEPOLIA_RPC_URL ?? "https://ethereum-sepolia-rpc.publicnode.com";
-const ignitionRequiredConfirmations = Number(process.env.IGNITION_REQUIRED_CONFIRMATIONS ?? "5");
+const ignitionRequiredConfirmations = Number(process.env.IGNITION_REQUIRED_CONFIRMATIONS ?? "1");
 
 export default defineConfig({
     plugins: [hardhatToolboxMochaEthers],

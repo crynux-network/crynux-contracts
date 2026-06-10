@@ -59,6 +59,7 @@ if (baseCrynuxTokenAddress === undefined) {
 }
 
 const updatedContracts = {
+  ...baseContracts,
   baseCrynuxTokenAddress,
   createdAtBlockNumber: Number(receipt.blockNumber),
 };

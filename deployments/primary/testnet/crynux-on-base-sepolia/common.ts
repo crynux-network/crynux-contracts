@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { JsonRpcProvider, type Filter, type Log } from '@ethersproject/providers';
 import { createPublicClient, defineChain, http, type Address, type Hex } from 'viem';
 import { baseSepolia } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
@@ -39,10 +40,24 @@ export type CrynuxOnBaseConfig = {
     publicSequencerUrl: string;
     privateRedisHost: string;
   };
+  'crynux-contracts-params': {
+    relayOperatorAddress: Address | '';
+    creditsAdminAddress: Address | '';
+    parameterWriterAddress: Address | '';
+    slashReceiverAddress: Address | '';
+  };
 };
 
 export type CrynuxOnBaseContracts = {
   coreContracts: CoreContracts;
+  nodeContracts?: {
+    credits: Address;
+    benefitAddress: Address;
+    delegatedStaking: Address;
+    nodeStaking: Address;
+    parameterController: Address;
+    deployedAtBlockNumber: number;
+  };
 };
 
 export const deploymentConfig = JSON.parse(await readFile(new URL('./config.json', import.meta.url), 'utf8')) as CrynuxOnBaseConfig;
@@ -51,6 +66,7 @@ export const minL2BaseFee = BigInt(deploymentConfig.minL2BaseFee);
 export const parentChain = baseSepolia;
 export const parentChainRpcUrl = process.env.BASE_SEPOLIA_RPC_URL ?? parentChain.rpcUrls.default.http[0];
 export const orbitChainRpcUrl = deploymentConfig.rpcUrl;
+const maxGetLogsBlockRange = 1_999;
 export const orbitChain = defineChain({
   id: deploymentConfig.chainId,
   name: deploymentConfig.name,
@@ -80,6 +96,65 @@ export const orbitChainPublicClient = createPublicClient({
   chain: orbitChain,
   transport: http(orbitChainRpcUrl),
 });
+
+class ChunkedGetLogsJsonRpcProvider extends JsonRpcProvider {
+  async getLogs(filter: Filter | Promise<Filter>): Promise<Log[]> {
+    const resolvedFilter = await filter;
+    const fromBlock = await this.resolveBlockNumber(resolvedFilter.fromBlock);
+    const toBlock = await this.resolveBlockNumber(resolvedFilter.toBlock);
+
+    if (fromBlock === null || toBlock === null || toBlock - fromBlock <= maxGetLogsBlockRange) {
+      return super.getLogs(resolvedFilter);
+    }
+
+    const logs: Log[] = [];
+
+    for (let chunkFromBlock = fromBlock; chunkFromBlock <= toBlock; chunkFromBlock += maxGetLogsBlockRange + 1) {
+      const chunkToBlock = Math.min(chunkFromBlock + maxGetLogsBlockRange, toBlock);
+      logs.push(
+        ...(await super.getLogs({
+          ...resolvedFilter,
+          fromBlock: chunkFromBlock,
+          toBlock: chunkToBlock,
+        })),
+      );
+    }
+
+    return logs;
+  }
+
+  private async resolveBlockNumber(blockTag: Filter['fromBlock']): Promise<number | null> {
+    if (blockTag === undefined) {
+      return null;
+    }
+
+    if (typeof blockTag === 'number') {
+      return blockTag;
+    }
+
+    if (blockTag === 'latest') {
+      return this.getBlockNumber();
+    }
+
+    if (blockTag === 'earliest') {
+      return 0;
+    }
+
+    if (/^0x[0-9a-fA-F]+$/.test(blockTag)) {
+      return Number.parseInt(blockTag, 16);
+    }
+
+    return null;
+  }
+}
+
+export function createParentChainProvider(): JsonRpcProvider {
+  return new ChunkedGetLogsJsonRpcProvider(parentChainRpcUrl);
+}
+
+export function createOrbitChainProvider(): JsonRpcProvider {
+  return new ChunkedGetLogsJsonRpcProvider(orbitChainRpcUrl);
+}
 
 export async function getDeployerAccount() {
   return privateKeyToAccount(await getConfiguredDeployerPrivateKey());

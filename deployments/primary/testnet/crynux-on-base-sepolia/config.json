@@ -21,5 +21,11 @@
     "redisPassword": "change-it",
     "publicSequencerUrl": "https://json-rpc.base-sepolia.crynux.io",
     "privateRedisHost": "<public-rpc-sequencer-host>"
+  },
+  "crynux-contracts-params": {
+    "relayOperatorAddress": "",
+    "creditsAdminAddress": "",
+    "parameterWriterAddress": "",
+    "slashReceiverAddress": ""
   }
 }

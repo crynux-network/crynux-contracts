@@ -6,19 +6,18 @@ import {
   type ArbitrumNetwork,
 } from '@arbitrum/sdk';
 import { BigNumber } from '@ethersproject/bignumber';
-import { JsonRpcProvider } from '@ethersproject/providers';
 import { Wallet } from '@ethersproject/wallet';
 import { formatUnits, parseAbi, parseUnits } from 'viem';
 import {
   deploymentConfig,
+  createOrbitChainProvider,
+  createParentChainProvider,
   getBaseCrynuxTokenAddress,
   getConfiguredDeployerPrivateKey,
   getCoreContracts,
   getDeployerAccount,
   orbitChainPublicClient,
-  orbitChainRpcUrl,
   parentChainPublicClient,
-  parentChainRpcUrl,
 } from './common.js';
 
 const erc20Abi = parseAbi(['function balanceOf(address account) view returns (uint256)']);
@@ -39,8 +38,8 @@ if (depositAmount <= 0n) {
 }
 
 const deployer = await getDeployerAccount();
-const parentChainProvider = new JsonRpcProvider(parentChainRpcUrl);
-const orbitChainProvider = new JsonRpcProvider(orbitChainRpcUrl);
+const parentChainProvider = createParentChainProvider();
+const orbitChainProvider = createOrbitChainProvider();
 const parentChainSigner = new Wallet(await getConfiguredDeployerPrivateKey(), parentChainProvider);
 const coreContracts = getCoreContracts();
 const baseCrynuxTokenAddress = getBaseCrynuxTokenAddress();

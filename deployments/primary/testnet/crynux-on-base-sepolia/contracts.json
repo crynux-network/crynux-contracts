@@ -12,5 +12,13 @@
     "upgradeExecutor": "0x26BD4D2bd170C260ea97fc68918e897f6Ea66A61",
     "validatorWalletCreator": "0xB7FE37712e46F28C8f22Ec4bAA33A09fb8B52BD0",
     "deployedAtBlockNumber": 42255144
+  },
+  "nodeContracts": {
+    "credits": "0x71399bBc8604C4EB75260BEf01c2A8deD735C795",
+    "benefitAddress": "0xFc80e019d00f0d06CbebdE648990A89c5a25B425",
+    "delegatedStaking": "0x8f31Ff3Ac3923442eAbA765e3422848d25FA2496",
+    "nodeStaking": "0xAE0DDF6cf595F1EACfA76e35D985357E69795712",
+    "parameterController": "0x7c8861a639B712D486eFB2C944419F7531700db0",
+    "deployedAtBlockNumber": 28
   }
 }

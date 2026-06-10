@@ -7,7 +7,9 @@ import { ethereumContracts } from '../ethereum-sepolia/common.js';
 
 export type BaseContracts = {
   baseCrynuxTokenAddress: Address | '';
+  benefitAddress: Address | '';
   createdAtBlockNumber: number;
+  benefitAddressDeployedAtBlockNumber: number;
 };
 
 export const baseNetworkContracts = {
