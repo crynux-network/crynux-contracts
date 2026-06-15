@@ -1,0 +1,92 @@
+services:
+  init-data-volumes:
+    image: alpine:latest
+    restart: "no"
+    command:
+      - sh
+      - -lc
+      - chown -R 1000:1000 /das-data /nitro-data
+    volumes:
+      - type: volume
+        source: das-data
+        target: /das-data
+        volume:
+          nocopy: true
+      - type: volume
+        source: nitro-data
+        target: /nitro-data
+        volume:
+          nocopy: true
+
+  das:
+    image: offchainlabs/nitro-node:v3.10.1-d7f07be
+    container_name: base-das
+    restart: unless-stopped
+    depends_on:
+      init-data-volumes:
+        condition: service_completed_successfully
+    ports:
+      - "9876:9876"
+      - "9877:9877"
+    volumes:
+      - ./keys:/home/user/data/keys:ro
+      - type: volume
+        source: das-data
+        target: /home/user/data/das-data
+        volume:
+          nocopy: true
+      - ./daserver.json:/home/user/data/daserver.json:ro
+    entrypoint:
+      - anytrustserver
+    command:
+      - --conf.file
+      - /home/user/data/daserver.json
+    environment:
+      GOMEMLIMIT: 4GiB
+
+  sequencer-redis:
+    image: redis:7-alpine
+    container_name: base-redis
+    restart: unless-stopped
+    command:
+      - sh
+      - -lc
+      - redis-server --appendonly yes --port 6488 --requirepass "<redis-password>"
+    ports:
+      - "6488:6488"
+    volumes:
+      - redis-data:/data
+
+  public-rpc-sequencer:
+    image: offchainlabs/nitro-node:v3.10.1-d7f07be
+    container_name: base-node
+    restart: unless-stopped
+    stop_grace_period: 30m
+    depends_on:
+      init-data-volumes:
+        condition: service_completed_successfully
+      das:
+        condition: service_started
+      sequencer-redis:
+        condition: service_started
+    ports:
+      - "127.0.0.1:8449:8449"
+    volumes:
+      - type: volume
+        source: nitro-data
+        target: /home/user/.arbitrum
+        volume:
+          nocopy: true
+      - ./nitro-node/nitro-node.public.json:/home/user/.arbitrum/nitro-node.json:ro
+    entrypoint:
+      - nitro
+    command:
+      - --conf.file
+      - /home/user/.arbitrum/nitro-node.json
+    environment:
+      GOMEMLIMIT: 4GiB
+
+volumes:
+  das-data:
+  nitro-data:
+  redis-data:

@@ -1,8 +1,8 @@
 {
   "emission": {
     "mode": 0,
-    "startTimestamp": 1779670800,
+    "startTimestamp": 1781308800,
     "initialEmissionIndex": 0,
-    "initCostCNX": 1000
+    "initCostCNX": 100000
   }
 }

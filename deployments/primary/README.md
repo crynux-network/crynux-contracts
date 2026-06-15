@@ -1,88 +1,142 @@
 # Primary Deployment
 
-This directory contains the deployment configuration for the Primary blockchain environment.
-
-The current implementation under `testnet/` targets Ethereum Sepolia, Base Sepolia, and Crynux on Base Sepolia. Ethereum Sepolia is the Ethereum testnet, while Base Sepolia is the Base testnet in the same testnet generation. The same structure applies to mainnet when the validated testnet flow is promoted.
-
-## Environment Model
+This directory defines the Primary deployment workflow for both `testnet` and `mainnet`.
 
 `Primary` identifies the blockchain environment that owns real CNX emission accounting for the global token economy.
 
 See [../../docs/emission.md](../../docs/emission.md) for the full emission topology and accounting model.
 
-This environment has a special three-chain shape:
+## Directory Model
 
-- Ethereum is the top-level chain that owns the canonical CNX ERC20 supply and the `Primary` emission contract.
-- Base is an Ethereum L2, and it is treated as the L1 environment for `Crynux on Base` because the `Crynux on Base` is an L2 rollup which attaches to Base as L1. The canonical Ethereum ERC20 token has a bound ERC20 representation on Base, and CNX can move between Ethereum and Base through bridges.
-- `Crynux on Base` is the L2 execution environment. CNX is bridged from Base into `Crynux on Base` and becomes the L2 native token.
+The deployment model is split by responsibility:
 
-The Primary environment deploys the emission contract only on Ethereum. Base and `Crynux on Base` do not deploy emission contracts in this architecture because CNX supply reaches them through the bridge path from Ethereum to Base and then from Base to `Crynux on Base`.
+- `scripts/` stores one shared script set for all networks.
+- `testnet/` stores only testnet configuration and artifacts.
+- `mainnet/` stores only mainnet configuration and artifacts.
 
-## Testnet Deployment Flow
+The three deployment layers are always:
 
-Private keys are configured through Hardhat network accounts. `common.json` contains only shared receiver addresses.
+- `ethereum` / `ethereum-sepolia`
+- `base` / `base-sepolia`
+- `crynux-on-base` / `crynux-on-base-sepolia`
 
-Set the deployer private key before running any deployment step:
+Each network folder MUST contain only configuration and artifacts such as:
+
+- `common.json`
+- `*/config.json`
+- `*/contracts.json`
+- `*/daserver.json`
+- `*/nitro-node/*.json`
+- `*/nitro-node/*.yml`
+
+## Network Selection
+
+All TypeScript scripts under `scripts/` MUST be run with:
+
+- `--network=testnet`
+- `--network=mainnet`
+
+Example:
 
 ```shell
-npx hardhat keystore set DEPLOYER_PRIVATE_KEY
+npx tsx deployments/primary/scripts/ethereum/deploy-token.ts --network=testnet
 ```
 
-Set the operator private keys before deploying Crynux on Base Sepolia:
+## Keystore Requirements
+
+Set deployer keys in Hardhat keystore:
 
 ```shell
-npx hardhat keystore set L2_BATCH_POSTER_PRIVATE_KEY
-npx hardhat keystore set L2_VALIDATOR_PRIVATE_KEY
+npx hardhat keystore set TESTNET_DEPLOYER_PRIVATE_KEY
+npx hardhat keystore set MAINNET_DEPLOYER_PRIVATE_KEY
 ```
 
-### Ethereum Sepolia
+## Primary Environment Model
 
-Ethereum Sepolia is the testnet top-level chain for canonical CNX supply and `Primary` emission accounting.
+Primary has a three-chain shape:
 
-1. Fill `common.json` with `daoTreasuryAddress` and `relayWalletColdAddress`, and fill `testnet/ethereum-sepolia/config.json` with the emission parameters: `mode`, `startTimestamp`, `initialEmissionIndex`, `initCostCNX`, and `fundingAmountWei`.
-2. Run `npx tsx deployments/primary/testnet/ethereum-sepolia/deploy-token.ts`. The script takes no CLI parameters; it deploys the canonical CNX ERC20 token on Ethereum Sepolia through Hardhat Ignition, reads the deployed token address from Ignition output, and writes it to `testnet/ethereum-sepolia/contracts.json`.
-3. Run `npx tsx deployments/primary/testnet/ethereum-sepolia/deploy-emission.ts`. The script takes no CLI parameters; it reads the receiver addresses and emission parameters from the JSON files, validates the recorded token and shared receiver addresses, writes the Hardhat Ignition parameter file, deploys and funds `EmissionERC20` through Hardhat Ignition, reads the deployed emission address from Ignition output, and writes it to `testnet/ethereum-sepolia/contracts.json`.
-4. Run `npx tsx deployments/primary/testnet/ethereum-sepolia/execute-emission.ts`. The script takes no CLI parameters; it reads the recorded token and emission addresses, prints the current emission state, calls `emission()` for the next due period, waits for the transaction receipt, and prints the updated emission state.
+- Ethereum is the canonical CNX ERC20 supply chain and hosts the `Primary` emission contract.
+- Base is an Ethereum L2 and is the parent chain for `Crynux on Base`.
+- `Crynux on Base` is an Arbitrum Orbit chain where CNX is bridged from Base and becomes the L2 native token.
 
+The Primary environment deploys the emission contract only on Ethereum. Base and `Crynux on Base` MUST NOT deploy emission contracts. CNX supply reaches Base and `Crynux on Base` through bridge flows.
 
-### Base Sepolia
+## Deployment Flow
 
-Base Sepolia receives CNX from Ethereum Sepolia through the Base Standard Bridge and acts as the L1 parent for `Crynux on Base Sepolia`.
+### 1) Ethereum Layer
 
-1. Confirm the Ethereum Sepolia CNX token address is recorded in `testnet/ethereum-sepolia/contracts.json`.
-2. Run `npx tsx deployments/primary/testnet/base-sepolia/create-bridged-token.ts`. The script takes no CLI parameters. This script creates the bound ERC20 representation through the Base Sepolia `OptimismMintableERC20Factory` and records the created token address in `testnet/base-sepolia/contracts.json`.
-3. Run `npx tsx deployments/primary/testnet/base-sepolia/bridge-cnx-from-ethereum.ts <amount>`, where `<amount>` is the integer CNX amount to bridge from Ethereum Sepolia to Base Sepolia. This script checks the Ethereum Sepolia deployer balance and allowance, approves the Base Sepolia `L1StandardBridge` when required, calls `bridgeERC20`, waits 120 seconds, and prints the deployer's Base Sepolia CNX balance.
-4. Run `npx tsx deployments/primary/testnet/base-sepolia/deploy-benefit-address.ts`. The script takes no CLI parameters; it deploys `BenefitAddress` on Base Sepolia through Hardhat Ignition, reads the deployed address from Ignition output, and writes it to `testnet/base-sepolia/contracts.json`. Relay withdrawals on Base Sepolia MUST use this network-local `BenefitAddress` contract to validate payout destinations safely.
+1. Fill `<network>/common.json` with `daoTreasuryAddress` and `relayWalletColdAddress`.
+2. Fill `<network>/<ethereum-layer>/config.json` with `mode`, `startTimestamp`, `initialEmissionIndex`, `initCostCNX`, and `fundingAmountWei`.
+3. Deploy token:
+   - `npx tsx deployments/primary/scripts/ethereum/deploy-token.ts --network=<testnet|mainnet>`
+   - This script deploys canonical CNX ERC20 through Hardhat Ignition, reads the deployed token address from Ignition output, and writes the address to `<network>/<ethereum-layer>/contracts.json`.
+4. Deploy and fund emission contract:
+   - `npx tsx deployments/primary/scripts/ethereum/deploy-emission.ts --network=<testnet|mainnet>`
+   - This script reads shared receiver addresses and emission parameters, validates required addresses, writes Ignition parameters, deploys and funds `EmissionERC20`, and writes the emission address to `<network>/<ethereum-layer>/contracts.json`.
+5. Execute the next emission cycle when due:
+   - `npx tsx deployments/primary/scripts/ethereum/execute-emission.ts --network=<testnet|mainnet>`
+   - This script reads the recorded token and emission addresses, prints the current emission state, executes `emission()` for the due period, waits for receipt, and prints the updated state.
 
-### Crynux On Base Sepolia
+### 2) Base Layer
 
-`Crynux on Base Sepolia` is an L2 (L3 for Ethereum) Arbitrum Orbit chain whose parent chain is Base Sepolia.
+1. Confirm Ethereum token is recorded in `<network>/<ethereum-layer>/contracts.json`.
+2. Create bridged CNX token:
+   - `npx tsx deployments/primary/scripts/base/create-bridged-token.ts --network=<testnet|mainnet>`
+   - This script creates the bound ERC20 representation through `OptimismMintableERC20Factory` and records it in `<network>/<base-layer>/contracts.json`.
+3. Bridge CNX from Ethereum to Base:
+   - `npx tsx deployments/primary/scripts/base/bridge-cnx-from-ethereum.ts <amount> --network=<testnet|mainnet>`
+   - `<amount>` MUST be an integer CNX amount.
+   - This script checks deployer balance and allowance on Ethereum, approves `L1StandardBridge` when required, calls `bridgeERC20`, waits for bridge processing, and prints the Base CNX balance.
+4. Bridge ETH from Ethereum to Base:
+   - `npx tsx deployments/primary/scripts/base/bridge-eth-from-ethereum.ts <eth-amount> --network=<testnet|mainnet>`
+   - This script bridges parent-chain ETH for Base-side gas funding.
+5. Deploy Base BenefitAddress:
+   - `npx tsx deployments/primary/scripts/base/deploy-benefit-address.ts --network=<testnet|mainnet>`
+   - This script deploys `BenefitAddress` through Hardhat Ignition and writes the deployed address to `<network>/<base-layer>/contracts.json`.
+   - Relay withdrawals on Base MUST use this network-local `BenefitAddress` contract to validate payout destinations.
+6. Optional token transfer helper:
+   - `npx tsx deployments/primary/scripts/base/transfer-cnx.ts <address> <integer-cnx-amount> --network=<testnet|mainnet>`
 
-1. Confirm the Base Sepolia CNX token address is recorded in `testnet/base-sepolia/contracts.json`, and fill `testnet/crynux-on-base-sepolia/config.json` with `crynux-contracts-params`. `creditsAdminAddress` MUST be left empty when bootstrap credit issuance is disabled.
+### 3) Crynux-on-Base Layer
 
-2. Run `npx tsx deployments/primary/testnet/crynux-on-base-sepolia/create-rollup.ts`. The script takes no CLI parameters and deploys the Orbit core contracts on Base Sepolia and records them in `testnet/crynux-on-base-sepolia/contracts.json`.
+1. Confirm Base token is recorded in `<network>/<base-layer>/contracts.json`.
+2. Fill `<network>/<crynux-layer>/config.json`, including:
+   - `batchPosterAddress`
+   - `validatorAddress`
+   - `crynux-contracts-params`
 
-3. Prepare the DAC key pair, DAC keyset, and related config according to [dac.md](./testnet/crynux-on-base-sepolia/dac.md).
+`creditsAdminAddress` MUST be empty when bootstrap credit issuance is disabled.
 
-4. Update `testnet/crynux-on-base-sepolia/daserver.json` with the recorded `contracts.coreContracts.sequencerInbox` address.
+#### 3.1) Operations On Base Chain
 
-5. Run `npx tsx deployments/primary/testnet/crynux-on-base-sepolia/set-dac-keyset.ts`. The script takes no CLI parameters and submits the generated DAC keyset to the recorded `SequencerInbox`.
+1. Prepare DAC key pair and keyset inputs:
+   - `.\deployments\primary\scripts\crynux-on-base\generate-das-keypair.ps1 -Network <testnet|mainnet>`
+   - `.\deployments\primary\scripts\crynux-on-base\generate-dac-keyset.ps1 -Network <testnet|mainnet>`
+   - Follow `deployments/primary/dac.md` for DAC backend URLs, keyset generation, and DAS constraints.
+2. Create rollup core contracts on Base:
+   - `npx tsx deployments/primary/scripts/crynux-on-base/create-rollup.ts --network=<testnet|mainnet>`
+   - This script creates Orbit core contracts on the Base parent chain and writes `coreContracts` to `<network>/<crynux-layer>/contracts.json`.
+3. Submit DAC keyset to `SequencerInbox` on Base after DAC keyset generation is complete:
+   - Run this step only after `.\deployments\primary\scripts\crynux-on-base\generate-dac-keyset.ps1 -Network <testnet|mainnet>` has written `generatedDacKeyset` to `<network>/<crynux-layer>/config.json`.
+   - `npx tsx deployments/primary/scripts/crynux-on-base/set-dac-keyset.ts --network=<testnet|mainnet>`
+4. Fund operator accounts on Base before private operators start:
+   - Batch poster and validator accounts MUST have enough Base ETH for gas.
+   - Validator account MUST have `1` Base CNX for staking.
 
-6. Run `npx tsx deployments/primary/testnet/crynux-on-base-sepolia/generate-nitro-node-config.ts`. The script takes no CLI parameters; it writes the public and private Nitro node config files from the recorded rollup contracts, DAC endpoints, and configured operator keys.
+#### 3.2) Crynux-on-Base Deployment Steps
 
-Nitro node config generation always writes two files:
-
-- `nitro-node/nitro-node.public.json` for public RPC, sequencer, DAS, and coordinator services.
-- `nitro-node/nitro-node.private.json` for batch poster and validator services.
-
-The same two files can be deployed on one machine or split across two machines. Deployment topology is an operations choice, not a different config generation mode.
-
-
-7. Fund the validator and batch poster accounts with enough Base Sepolia ETH for gas before starting the private operators service. Also fund the validator account with 1 Base Sepolia CNX for staking.
-
-8. Start the Nitro node and DAS services with `testnet/crynux-on-base-sepolia/nitro-node/docker-compose.public.yml` and `testnet/crynux-on-base-sepolia/nitro-node/docker-compose.private.yml`, using the generated Nitro configs, `daserver.json`, and the same BLS key used to generate the DAC keyset.
-
-9.  Initialize the sequencer coordinator priority list after Redis starts. The URL must exactly match `node.seq-coordinator.my-url` in `nitro-node/nitro-node.public.json`.
+1. Update `<network>/<crynux-layer>/daserver.json`:
+   - `parent-chain.sequencer-inbox-address` MUST be set to `contracts.coreContracts.sequencerInbox` from `<network>/<crynux-layer>/contracts.json` after rollup creation.
+2. Generate Nitro node configs:
+   - `npx tsx deployments/primary/scripts/crynux-on-base/generate-nitro-node-config.ts --network=<testnet|mainnet>`
+   - This script writes `<network>/<crynux-layer>/nitro-node/nitro-node.public.json` for public RPC, sequencer, DAS, and coordinator services.
+   - This script writes `<network>/<crynux-layer>/nitro-node/nitro-node.private.json` for batch poster and validator services.
+   - The two configs MAY run on one machine or split across multiple machines.
+3. Start Nitro and DAS services:
+   - Start `<network>/<crynux-layer>/nitro-node/docker-compose.public.yml`.
+   - Start `<network>/<crynux-layer>/nitro-node/docker-compose.private.yml`.
+   - The DAS service MUST mount the same BLS key used to generate the submitted DAC keyset.
+4. Initialize sequencer coordinator priorities after Redis starts:
 
 ```bash
 docker compose -f nitro-node/docker-compose.public.yml exec sequencer-redis \
@@ -90,14 +144,43 @@ docker compose -f nitro-node/docker-compose.public.yml exec sequencer-redis \
   SET coordinator.priorities '<public-rpc-sequencer-url>'
 ```
 
-For a single public sequencer, `coordinator.priorities` contains only that sequencer URL. Do not add the private operators service to this list.
+   - `<public-rpc-sequencer-url>` MUST exactly match `node.seq-coordinator.my-url` in `nitro-node.public.json`.
+   - For a single public sequencer, `coordinator.priorities` MUST contain only that URL.
+   - Private operators service MUST NOT be added to `coordinator.priorities`.
 
-10. Run `npx tsx deployments/primary/testnet/crynux-on-base-sepolia/set-min-l2-base-fee.ts`. The script takes no CLI parameters and sets the configured minimum L2 base fee after the L2 RPC is reachable.
+#### 3.3) Post-Deployment Operations On Crynux-on-Base
 
-11. Run `npx tsx deployments/primary/testnet/crynux-on-base-sepolia/set-l2-tx-fee-receiver.ts`. The script takes no CLI parameters and sets the ArbOS infrastructure fee account, network fee account, and L1 pricing reward recipient to `daoTreasuryAddress` from `common.json`.
+1. Set minimum L2 base fee after Crynux-on-Base RPC is reachable:
+   - `npx tsx deployments/primary/scripts/crynux-on-base/set-min-l2-base-fee.ts --network=<testnet|mainnet>`
+2. Set L2 fee receiver accounts:
+   - `npx tsx deployments/primary/scripts/crynux-on-base/set-l2-tx-fee-receiver.ts --network=<testnet|mainnet>`
+   - This script sets ArbOS infrastructure fee account, network fee account, and L1 pricing reward recipient to `daoTreasuryAddress` from `<network>/common.json`.
+3. Deploy Orbit token bridge contracts:
+   - `npx tsx deployments/primary/scripts/crynux-on-base/create-token-bridge.ts --network=<testnet|mainnet>`
+   - This script sends the parent-chain transaction on Base and waits for retryable execution on Crynux-on-Base.
+4. Bootstrap native CNX gas balance when Crynux-on-Base accounts need gas before the Orbit token bridge is deployed:
+   - `npx tsx deployments/primary/scripts/crynux-on-base/deposit-native-cnx-to-crynux.ts <amount> --network=<testnet|mainnet>`
+   - This script uses only the Orbit core bridge and inbox contracts. It deposits Base CNX as the native gas token on Crynux-on-Base and MUST NOT require Orbit token bridge contracts.
+   - This script is for bootstrap gas funding and recovery operations before the token bridge contract set is available.
+5. Deposit CNX from Base to Crynux-on-Base through the deployed Orbit token bridge:
+   - `npx tsx deployments/primary/scripts/crynux-on-base/deposit-base-cnx-to-crynux.ts <amount> --network=<testnet|mainnet>`
+   - This script registers the full Orbit token bridge contract set, checks Base CNX balance and allowance, approves the Orbit inbox when required, and deposits CNX to mint native CNX on Crynux-on-Base.
+   - This script MUST run only after `create-token-bridge.ts` completes successfully.
+6. Deploy Crynux node contracts:
+   - `npx tsx deployments/primary/scripts/crynux-on-base/deploy-crynux-contracts.ts --network=<testnet|mainnet>`
+   - This script reads `crynux-contracts-params`, writes Ignition parameters, deploys `Credits`, `BenefitAddress`, `DelegatedStaking`, `NodeStaking`, and `ParameterController`, and writes addresses to `<network>/<crynux-layer>/contracts.json`.
+7. Run withdrawal and claim operations:
+   - `npx tsx deployments/primary/scripts/crynux-on-base/withdraw-crynux-to-base.ts <amount> [destinationAddress] --network=<testnet|mainnet>`
+   - `npx tsx deployments/primary/scripts/crynux-on-base/claim-crynux-withdrawal.ts <withdrawalTxHash> --network=<testnet|mainnet>`
 
-12. Run `npx tsx deployments/primary/testnet/crynux-on-base-sepolia/create-token-bridge.ts`. The script takes no CLI parameters and deploys or reads the Orbit token bridge contracts from the recorded rollup contracts.
+## Nitro And DAS Files
 
-13. Run `npx tsx deployments/primary/testnet/crynux-on-base-sepolia/deposit-base-cnx-to-crynux.ts <amount>`, where `<amount>` is the decimal CNX amount, such as `1.5`, to deposit from Base Sepolia into Crynux on Base Sepolia.
+Nitro and DAS files are network-scoped and MUST be stored under the selected network folder:
 
-14. Run `npx tsx deployments/primary/testnet/crynux-on-base-sepolia/deploy-crynux-contracts.ts`. The script takes no CLI parameters; it reads `crynux-contracts-params` from the chain config, writes the Hardhat Ignition parameter file, deploys `Credits`, `BenefitAddress`, `DelegatedStaking`, `NodeStaking`, and `ParameterController` on Crynux on Base Sepolia, and writes the deployed addresses to `testnet/crynux-on-base-sepolia/contracts.json`.
+- `<network>/<crynux-layer>/daserver.json`
+- `<network>/<crynux-layer>/nitro-node/nitro-node.public.json`
+- `<network>/<crynux-layer>/nitro-node/nitro-node.private.json`
+- `<network>/<crynux-layer>/nitro-node/docker-compose.public.yml`
+- `<network>/<crynux-layer>/nitro-node/docker-compose.private.yml`
+
+When running private operators, real batch poster and validator private keys are pasted into the target machine `nitro-node.private.json`.

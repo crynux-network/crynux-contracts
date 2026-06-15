@@ -1,0 +1,12 @@
+{
+  "networkContracts": {
+    "l1StandardBridgeOnEthereum": "0x3154Cf16ccdb4C6d922629664174b904d80F2C35",
+    "l2StandardBridge": "0x4200000000000000000000000000000000000010",
+    "optimismMintableERC20Factory": "0xF10122D428B4bc8A9d050D06a2037259b4c4B83B"
+  },
+  "bridgedCrynuxToken": {
+    "name": "Crynux Token",
+    "symbol": "CNX",
+    "decimals": 18
+  }
+}

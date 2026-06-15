@@ -1,7 +1,7 @@
 {
-  "chainId": 188962142,
-  "name": "Crynux on Base Sepolia",
-  "rpcUrl": "https://json-rpc.base-sepolia.crynux.io",
+  "chainId": 18896214,
+  "name": "Crynux on Base",
+  "rpcUrl": "https://json-rpc.base.crynux.io",
   "minL2BaseFee": 700000000,
   "batchPosterAddress": "",
   "validatorAddress": "",
@@ -9,20 +9,22 @@
     "assumed-honest": 1,
     "backends": [
       {
-        "url": "https://rpc.das.base-sepolia.crynux.io",
+        "url": "",
         "pubkey": ""
       }
     ]
   },
-  "dacRestUrls": ["https://rest.das.base-sepolia.crynux.io"],
+  "dacRestUrls": [
+    ""
+  ],
   "generatedDacKeyset": {
     "keyset": "",
     "keysetHash": ""
   },
   "production": {
     "redisPassword": "change-it",
-    "publicSequencerUrl": "https://json-rpc.base-sepolia.crynux.io",
-    "privateRedisHost": "<public-rpc-sequencer-host>"
+    "publicSequencerUrl": "",
+    "privateRedisHost": ""
   },
   "crynux-contracts-params": {
     "relayOperatorAddress": "",
