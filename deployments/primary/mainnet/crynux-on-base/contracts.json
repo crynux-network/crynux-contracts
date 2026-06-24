@@ -1,24 +1,24 @@
 {
   "coreContracts": {
-    "rollup": "0x869FFaF083E8220Ea2438a29738d4276A2cC2169",
-    "inbox": "0xC3801CC84378B5DE9309B6a76EC398cd1CCA1c18",
-    "nativeToken": "0x0cba9e7585f91A758fa399B1A1dB148ADfE8cfd5",
-    "outbox": "0x329987e93324889d607D73a89FCE65415da174f4",
-    "rollupEventInbox": "0x323ac8aA7Ae7efbB37da295Fbf58b2FEC52aB054",
-    "challengeManager": "0x7cB39fc9eA327737FA4Fa8317eBDb4800e0F0F27",
-    "adminProxy": "0x9efeD1B539e861190dEBc484311274DF650eB47b",
-    "sequencerInbox": "0x651E1e80812D31c17029F1F78ED45561cA517487",
-    "bridge": "0x0eA1B57bd4C9cfD4a2f5619965fE3eD1A6094D7E",
-    "upgradeExecutor": "0x95a65790FE326DcC802A2533e713F332dDDe7490",
+    "rollup": "0xC351e736615aE833759E5E4BDc331170f0c8553A",
+    "inbox": "0x02DEE6E98b651c73B60D8D0282a1DbE04F8Ce575",
+    "nativeToken": "0x9557DD9E241bc9636732623B672B4090AF519396",
+    "outbox": "0x4039CB909D11558a31Df28705d5Fd12FE8b7D239",
+    "rollupEventInbox": "0x0101D9e537bB394b57ed23Bd0E4B7AC3e583Df18",
+    "challengeManager": "0x42712fc7fd480409A26bE6b3612A7231869060C3",
+    "adminProxy": "0x41c1b66B2566DB8D4f81c73D852C68E8DE5a2609",
+    "sequencerInbox": "0xb413CADD409Ef1392d60E4152e6124Af28051733",
+    "bridge": "0x01D9Db097DC8b30EFbc266fd80b233fB6b6BFF40",
+    "upgradeExecutor": "0x7080B259F02783Bc19a5160D2e3CF8756c8b9f88",
     "validatorWalletCreator": "0xB7FE37712e46F28C8f22Ec4bAA33A09fb8B52BD0",
-    "deployedAtBlockNumber": 47286343
+    "deployedAtBlockNumber": 47707039
   },
   "nodeContracts": {
-    "credits": "0x2F44194dB165B773891556F8B27384fE87a9AeFd",
-    "benefitAddress": "0x31609b6531399561c2B65b8673a17FE2575c1654",
-    "delegatedStaking": "0x91CaDAc285FaE7d652eEDC1863ed16D73288AB0D",
-    "nodeStaking": "0xF7b23E19bf1CD63fa640eD3c6bb51eedF07caadE",
-    "parameterController": "0x273bAB72600947ff07367d12fAfd1EAFC2ba2079",
-    "deployedAtBlockNumber": 33
+    "credits": "0xE474ecE312b79fDF833C76C0d8255fA688068e4a",
+    "benefitAddress": "0x7c8861a639B712D486eFB2C944419F7531700db0",
+    "delegatedStaking": "0xAbCa3C0a800569c05e87E500306dFf9b8Ba21821",
+    "nodeStaking": "0x31609b6531399561c2B65b8673a17FE2575c1654",
+    "parameterController": "0x2F44194dB165B773891556F8B27384fE87a9AeFd",
+    "deployedAtBlockNumber": 31
   }
 }

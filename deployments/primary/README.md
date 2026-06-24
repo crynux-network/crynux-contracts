@@ -163,8 +163,9 @@ docker compose -f nitro-node/docker-compose.public.yml exec sequencer-redis \
    - This script uses only the Orbit core bridge and inbox contracts. It deposits Base CNX as the native gas token on Crynux-on-Base and MUST NOT require Orbit token bridge contracts.
    - This script is for bootstrap gas funding and recovery operations before the token bridge contract set is available.
 5. Deposit CNX from Base to Crynux-on-Base through the deployed Orbit token bridge:
-   - `npx tsx deployments/primary/scripts/crynux-on-base/deposit-base-cnx-to-crynux.ts <amount> --network=<testnet|mainnet>`
-   - This script registers the full Orbit token bridge contract set, checks Base CNX balance and allowance, approves the Orbit inbox when required, and deposits CNX to mint native CNX on Crynux-on-Base.
+   - `npx tsx deployments/primary/scripts/crynux-on-base/deposit-base-cnx-to-crynux.ts <amount> [destinationAddress] --network=<testnet|mainnet>`
+   - This script registers the full Orbit token bridge contract set, checks Base CNX balance and allowance, approves the Orbit inbox when required, and deposits CNX to mint native CNX on Crynux-on-Base for `destinationAddress`.
+   - `destinationAddress` defaults to the deployer address.
    - This script MUST run only after `create-token-bridge.ts` completes successfully.
 6. Deploy Crynux node contracts:
    - `npx tsx deployments/primary/scripts/crynux-on-base/deploy-crynux-contracts.ts --network=<testnet|mainnet>`
