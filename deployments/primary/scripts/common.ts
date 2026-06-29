@@ -7,11 +7,12 @@ import type { Address, Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 
 export type PrimaryDeploymentNetwork = 'testnet' | 'mainnet';
-export type PrimaryLayer = 'ethereum' | 'base' | 'crynux-on-base';
+export type PrimaryLayer = 'ethereum' | 'base' | 'crynux-on-base' | 'near';
 
 type ParsedCli = {
   network: PrimaryDeploymentNetwork;
   positionalArgs: string[];
+  optionArgs: string[];
 };
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url));
@@ -22,6 +23,7 @@ const parsedCli = parsePrimaryCliArgs(process.argv.slice(2));
 export const primaryRuntime = {
   network: parsedCli.network,
   positionalArgs: parsedCli.positionalArgs,
+  optionArgs: parsedCli.optionArgs,
   networkDir: resolve(primaryDir, parsedCli.network),
   isTestnet: parsedCli.network === 'testnet',
   names: parsedCli.network === 'testnet'
@@ -29,11 +31,13 @@ export const primaryRuntime = {
         ethereum: 'Ethereum Sepolia',
         base: 'Base Sepolia',
         crynuxOnBase: 'Crynux on Base Sepolia',
+        near: 'NEAR Testnet',
       }
     : {
         ethereum: 'Ethereum',
         base: 'Base',
         crynuxOnBase: 'Crynux on Base',
+        near: 'NEAR',
       },
   hardhatNetworks: parsedCli.network === 'testnet'
     ? {
@@ -56,6 +60,7 @@ export type PrimaryConfig = {
 function parsePrimaryCliArgs(rawArgs: string[]): ParsedCli {
   let network: PrimaryDeploymentNetwork | undefined;
   const positionalArgs: string[] = [];
+  const optionArgs: string[] = [];
 
   for (let index = 0; index < rawArgs.length; index += 1) {
     const arg = rawArgs[index];
@@ -81,7 +86,8 @@ function parsePrimaryCliArgs(rawArgs: string[]): ParsedCli {
     }
 
     if (arg.startsWith('--')) {
-      throw new Error(`Unsupported option: ${arg}.`);
+      optionArgs.push(arg);
+      continue;
     }
 
     positionalArgs.push(arg);
@@ -91,7 +97,7 @@ function parsePrimaryCliArgs(rawArgs: string[]): ParsedCli {
     throw new Error('Missing required --network option. Use --network=testnet or --network=mainnet.');
   }
 
-  return { network, positionalArgs };
+  return { network, positionalArgs, optionArgs };
 }
 
 export function getPrimaryLayerDir(layer: PrimaryLayer): string {
@@ -100,11 +106,13 @@ export function getPrimaryLayerDir(layer: PrimaryLayer): string {
         ethereum: 'ethereum-sepolia',
         base: 'base-sepolia',
         'crynux-on-base': 'crynux-on-base-sepolia',
+        near: 'near',
       }[layer]
     : {
         ethereum: 'ethereum',
         base: 'base',
         'crynux-on-base': 'crynux-on-base',
+        near: 'near',
       }[layer];
 
   return resolve(primaryRuntime.networkDir, layerFolder);
@@ -179,7 +187,10 @@ export function getPositionalArg(index: number): string | undefined {
 export function expectPositionalArgs(
   count: number,
   usageWithoutNetwork: string,
+  allowedOptions: readonly string[] = [],
 ): string[] {
+  expectSupportedOptions(allowedOptions);
+
   if (primaryRuntime.positionalArgs.length !== count) {
     throw new Error(`Usage: ${usageWithoutNetwork} --network=<testnet|mainnet>`);
   }
@@ -190,12 +201,22 @@ export function expectPositionalArgs(
 export function expectAtLeastPositionalArgs(
   minCount: number,
   usageWithoutNetwork: string,
+  allowedOptions: readonly string[] = [],
 ): string[] {
+  expectSupportedOptions(allowedOptions);
+
   if (primaryRuntime.positionalArgs.length < minCount) {
     throw new Error(`Usage: ${usageWithoutNetwork} --network=<testnet|mainnet>`);
   }
 
   return primaryRuntime.positionalArgs;
+}
+
+function expectSupportedOptions(allowedOptions: readonly string[]): void {
+  const unsupportedOption = primaryRuntime.optionArgs.find((option) => !allowedOptions.includes(option));
+  if (unsupportedOption !== undefined) {
+    throw new Error(`Unsupported option: ${unsupportedOption}.`);
+  }
 }
 
 export function run(command: string, args: string[]): Promise<void> {

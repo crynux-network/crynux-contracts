@@ -31,12 +31,14 @@ function sleep(ms: number): Promise<void> {
 
 const [csvPathInput, ...extraArgs] = expectAtLeastPositionalArgs(
   0,
-  'npx tsx deployments/primary/scripts/base/batch-transfer-cns.ts [csvPath]',
+  'npx tsx deployments/primary/scripts/base/batch-transfer-cns.ts [csvPath] [--force]',
+  ['--force'],
 );
+const force = primaryRuntime.optionArgs.includes('--force');
 
 if (extraArgs.length > 0) {
   throw new Error(
-    'Usage: npx tsx deployments/primary/scripts/base/batch-transfer-cns.ts [csvPath] --network=<testnet|mainnet>',
+    'Usage: npx tsx deployments/primary/scripts/base/batch-transfer-cns.ts [csvPath] [--force] --network=<testnet|mainnet>',
   );
 }
 
@@ -78,20 +80,20 @@ console.log(
 for (const row of rows) {
   console.log(`Processing row ${row.rowNumber}: ${formatUnits(row.amount, bridgedCrynuxToken.decimals)} CNX to ${row.address}`);
 
-  if (await isRecipientContract(row.address)) {
+  if (!force && await isRecipientContract(row.address)) {
     await appendSkippedContractRow(row);
     console.log(`Skipping row ${row.rowNumber}: ${row.address} is a contract address.`);
     continue;
   }
 
   const balanceBefore = await readCnxBalance(row.address);
-  if (balanceBefore !== 0n) {
+  if (!force && balanceBefore !== 0n) {
     throw new Error(
       `Transfer CSV row ${row.rowNumber} recipient balance must be zero before transfer. Current balance: ${formatUnits(balanceBefore, bridgedCrynuxToken.decimals)} CNX.`,
     );
   }
 
-  await transferRowWithHttpRetry(row);
+  await transferRowWithHttpRetry(row, balanceBefore);
 }
 
 const senderBalanceAfter = await readCnxBalance(account.address);
@@ -116,10 +118,12 @@ async function readCnxBalance(address: Address): Promise<bigint> {
   });
 }
 
-async function transferRowWithHttpRetry(row: TransferRow): Promise<void> {
+async function transferRowWithHttpRetry(row: TransferRow, balanceBefore: bigint): Promise<void> {
+  const expectedBalanceAfter = balanceBefore + row.amount;
+
   for (let retryCount = 0; ; retryCount += 1) {
     try {
-      await transferRow(row);
+      await transferRow(row, expectedBalanceAfter);
       return;
     } catch (error) {
       if (!isRetryableHttpError(error) || retryCount >= maxHttpRetryCount) {
@@ -132,21 +136,21 @@ async function transferRowWithHttpRetry(row: TransferRow): Promise<void> {
       await sleep(httpRetryWaitMs);
 
       const balanceBeforeRetry = await readCnxBalance(row.address);
-      if (balanceBeforeRetry === row.amount) {
+      if (balanceBeforeRetry === expectedBalanceAfter) {
         console.log(`Transfer row ${row.rowNumber} already completed before retry.`);
         return;
       }
 
-      if (balanceBeforeRetry !== 0n) {
+      if (balanceBeforeRetry !== balanceBefore) {
         throw new Error(
-          `Transfer row ${row.rowNumber} retry stopped because recipient balance is ${formatUnits(balanceBeforeRetry, bridgedCrynuxToken.decimals)} CNX, expected either 0 or ${formatUnits(row.amount, bridgedCrynuxToken.decimals)} CNX.`,
+          `Transfer row ${row.rowNumber} retry stopped because recipient balance is ${formatUnits(balanceBeforeRetry, bridgedCrynuxToken.decimals)} CNX, expected either ${formatUnits(balanceBefore, bridgedCrynuxToken.decimals)} or ${formatUnits(expectedBalanceAfter, bridgedCrynuxToken.decimals)} CNX.`,
         );
       }
     }
   }
 }
 
-async function transferRow(row: TransferRow): Promise<void> {
+async function transferRow(row: TransferRow, expectedBalanceAfter: bigint): Promise<void> {
   const hash = await walletClient.writeContract({
     address: baseCrynuxTokenAddress,
     abi: erc20Abi,
@@ -164,9 +168,9 @@ async function transferRow(row: TransferRow): Promise<void> {
   await sleep(balanceCheckWaitMs);
 
   const balanceAfter = await readCnxBalance(row.address);
-  if (balanceAfter !== row.amount) {
+  if (balanceAfter !== expectedBalanceAfter) {
     throw new Error(
-      `Transfer row ${row.rowNumber} balance verification failed. Expected ${formatUnits(row.amount, bridgedCrynuxToken.decimals)} CNX, got ${formatUnits(balanceAfter, bridgedCrynuxToken.decimals)} CNX.`,
+      `Transfer row ${row.rowNumber} balance verification failed. Expected ${formatUnits(expectedBalanceAfter, bridgedCrynuxToken.decimals)} CNX, got ${formatUnits(balanceAfter, bridgedCrynuxToken.decimals)} CNX.`,
     );
   }
 

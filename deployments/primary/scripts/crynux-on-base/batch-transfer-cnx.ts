@@ -41,12 +41,14 @@ function sleep(ms: number): Promise<void> {
 
 const [csvPathInput, ...extraArgs] = expectAtLeastPositionalArgs(
   0,
-  'npx tsx deployments/primary/scripts/crynux-on-base/batch-transfer-cnx.ts [csvPath]',
+  'npx tsx deployments/primary/scripts/crynux-on-base/batch-transfer-cnx.ts [csvPath] [--force]',
+  ['--force'],
 );
+const force = primaryRuntime.optionArgs.includes('--force');
 
 if (extraArgs.length > 0) {
   throw new Error(
-    'Usage: npx tsx deployments/primary/scripts/crynux-on-base/batch-transfer-cnx.ts [csvPath] --network=<testnet|mainnet>',
+    'Usage: npx tsx deployments/primary/scripts/crynux-on-base/batch-transfer-cnx.ts [csvPath] [--force] --network=<testnet|mainnet>',
   );
 }
 
@@ -78,6 +80,7 @@ console.log(
       rowCount: rows.length,
       totalAmount: formatUnits(totalAmount, 18),
       balanceBefore: formatUnits(balanceBefore, 18),
+      force,
     },
     null,
     2,
@@ -87,7 +90,7 @@ console.log(
 for (const row of rows) {
   console.log(`Processing row ${row.rowNumber}: ${formatUnits(row.amount, 18)} CNX to ${row.address}`);
 
-  if (await isRecipientContract(row.address)) {
+  if (!force && await isRecipientContract(row.address)) {
     await appendSkippedContractRow(row);
     console.log(`Skipping row ${row.rowNumber}: ${row.address} is a contract address.`);
     continue;
@@ -98,13 +101,13 @@ for (const row of rows) {
     console.log(`Skipping row ${row.rowNumber}: recipient total balance already matches the transfer amount.`);
     continue;
   }
-  if (recipientBalancesBefore.total !== 0n) {
+  if (!force && recipientBalancesBefore.total !== 0n) {
     throw new Error(
       `Transfer CSV row ${row.rowNumber} recipient total balance must be zero before transfer. Current balances: ${formatRecipientBalances(recipientBalancesBefore)}.`,
     );
   }
 
-  await transferRowWithHttpRetry(row);
+  await transferRowWithHttpRetry(row, recipientBalancesBefore.total, recipientBalancesBefore.total + row.amount);
 }
 
 const balanceAfter = await orbitChainPublicClient.getBalance({ address: deployer.address });
@@ -150,10 +153,10 @@ async function readRecipientBalances(address: Address): Promise<RecipientBalance
   };
 }
 
-async function transferRowWithHttpRetry(row: TransferRow): Promise<void> {
+async function transferRowWithHttpRetry(row: TransferRow, recipientTotalBefore: bigint, expectedRecipientTotalAfter: bigint): Promise<void> {
   for (let retryCount = 0; ; retryCount += 1) {
     try {
-      await transferRow(row);
+      await transferRow(row, expectedRecipientTotalAfter);
       return;
     } catch (error) {
       if (!isRetryableHttpError(error) || retryCount >= maxHttpRetryCount) {
@@ -166,21 +169,21 @@ async function transferRowWithHttpRetry(row: TransferRow): Promise<void> {
       await sleep(httpRetryWaitMs);
 
       const balancesBeforeRetry = await readRecipientBalances(row.address);
-      if (isTransferVerified(balancesBeforeRetry.total, row.amount)) {
+      if (isTransferVerified(balancesBeforeRetry.total, expectedRecipientTotalAfter)) {
         console.log(`Transfer row ${row.rowNumber} already completed before retry.`);
         return;
       }
 
-      if (balancesBeforeRetry.total !== 0n) {
+      if (!isRetryableRecipientTotal(balancesBeforeRetry.total, recipientTotalBefore)) {
         throw new Error(
-          `Transfer row ${row.rowNumber} retry stopped because recipient total balance is not zero and does not match the transfer amount. Current balances: ${formatRecipientBalances(balancesBeforeRetry)}, expected ${formatUnits(row.amount, 18)} CNX.`,
+          `Transfer row ${row.rowNumber} retry stopped because recipient total balance does not match the pre-transfer or expected post-transfer total. Current balances: ${formatRecipientBalances(balancesBeforeRetry)}, pre-transfer total=${formatUnits(recipientTotalBefore, 18)} CNX, expected post-transfer total=${formatUnits(expectedRecipientTotalAfter, 18)} CNX.`,
         );
       }
     }
   }
 }
 
-async function transferRow(row: TransferRow): Promise<void> {
+async function transferRow(row: TransferRow, expectedRecipientTotalAfter: bigint): Promise<void> {
   const hash = await walletClient.sendTransaction({
     to: row.address,
     value: row.amount,
@@ -196,9 +199,9 @@ async function transferRow(row: TransferRow): Promise<void> {
   await sleep(balanceCheckWaitMs);
 
   const balancesAfter = await readRecipientBalances(row.address);
-  if (!isTransferVerified(balancesAfter.total, row.amount)) {
+  if (!isTransferVerified(balancesAfter.total, expectedRecipientTotalAfter)) {
     throw new Error(
-      `Transfer row ${row.rowNumber} balance verification failed. Expected ${formatUnits(row.amount, 18)} CNX total, got ${formatRecipientBalances(balancesAfter)}.`,
+      `Transfer row ${row.rowNumber} balance verification failed. Expected ${formatUnits(expectedRecipientTotalAfter, 18)} CNX total, got ${formatRecipientBalances(balancesAfter)}.`,
     );
   }
 
@@ -223,6 +226,14 @@ function getNodeStakingAmount(stakingInfo: unknown): bigint {
 
 function isTransferVerified(actualTotal: bigint, expectedTotal: bigint): boolean {
   return getAbsDiff(actualTotal, expectedTotal) <= postTransferBalanceTolerance;
+}
+
+function isRetryableRecipientTotal(actualTotal: bigint, expectedTotal: bigint): boolean {
+  if (force) {
+    return isTransferVerified(actualTotal, expectedTotal);
+  }
+
+  return actualTotal === expectedTotal;
 }
 
 function getAbsDiff(left: bigint, right: bigint): bigint {

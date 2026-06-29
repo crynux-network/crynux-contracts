@@ -1,0 +1,14 @@
+{
+  "deployerAccountId": "crynux-deployer.testnet",
+  "networkContracts": {
+    "ethereumBridgeAddress": "0x68a86e0Ea5B1d39F385c1326e4d493526dFe4401",
+    "nearBridgeAccountId": "omni.n-bridge.testnet",
+    "nearTokenDeployerAccountId": "omnidep.testnet",
+    "nearRpcUrl": "https://rpc.testnet.near.org"
+  },
+  "bridgedCrynuxToken": {
+    "name": "Crynux",
+    "symbol": "CNX",
+    "decimals": 18
+  }
+}

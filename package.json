@@ -21,6 +21,11 @@
     },
     "dependencies": {
         "@arbitrum/chain-sdk": "^0.26.0",
+        "@napi-rs/keyring": "^1.3.0",
+        "@omni-bridge/core": "^0.10.0",
+        "@omni-bridge/evm": "^0.10.0",
+        "@omni-bridge/near": "^0.10.0",
+        "near-kit": "^0.7.0",
         "viem": "^1.21.4"
     }
 }
