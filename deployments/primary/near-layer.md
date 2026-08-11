@@ -57,7 +57,16 @@ The mainnet account MUST hold enough NEAR to pay for NEAR-side storage registrat
 
 The config file provides the default NEAR deployer account, Omni Bridge addresses, and NEAR RPC URL.
 
-### 4) Create NEAR Bridged CNX Token
+### 4) Query NEAR Account Balance
+
+1. Query the configured NEAR deployer account balance:
+   - `npx tsx deployments/primary/scripts/near/query-near-balance.ts --network=<testnet|mainnet>`
+2. Query a specific NEAR account balance by passing the account ID explicitly:
+   - `npx tsx deployments/primary/scripts/near/query-near-balance.ts <near-account-id> --network=<testnet|mainnet>`
+
+This script reads `deployerAccountId` from the NEAR config file when the account argument is omitted, queries the NEAR native account balance, and prints the available balance, locked balance, total balance, raw yoctoNEAR values, and storage usage.
+
+### 5) Create NEAR Bridged CNX Token
 
 1. Start NEAR bridged token creation:
    - `npx tsx deployments/primary/scripts/near/create-bridged-token.ts --network=<testnet|mainnet>`
@@ -65,7 +74,7 @@ The config file provides the default NEAR deployer account, Omni Bridge addresse
 
 This script uses the Omni Bridge SDK to log Ethereum CNX metadata, deploy the NEAR bridged token, and record the NEAR token account.
 
-### 5) Bridge CNX From Ethereum To NEAR
+### 6) Bridge CNX From Ethereum To NEAR
 
 1. Submit the Ethereum-side CNX bridge transaction:
    - `npx tsx deployments/primary/scripts/near/bridge-cnx-from-ethereum.ts <integer-cnx-amount> --network=<testnet|mainnet>`
@@ -77,7 +86,7 @@ This script uses the Omni Bridge SDK to log Ethereum CNX metadata, deploy the NE
 
 This script reads the default recipient from `deployerAccountId` in the NEAR config file when the recipient argument is omitted. It checks the Ethereum deployer CNX balance, gets the Omni Bridge relayer fee quote, includes the quoted relayer fees, approves the Ethereum Omni Bridge contract when required, submits the SDK-built transfer transaction, and prints the transfer status URL. The NEAR `fin_transfer` claim is performed by an active Omni Bridge relayer.
 
-### 6) Transfer CNX On NEAR
+### 7) Transfer CNX On NEAR
 
 1. Transfer CNX from the configured NEAR deployer account to another NEAR account:
    - `npx tsx deployments/primary/scripts/near/transfer-cnx-on-near.ts <integer-cnx-amount> <near-recipient-account-id> --network=<testnet|mainnet>`
@@ -85,7 +94,7 @@ This script reads the default recipient from `deployerAccountId` in the NEAR con
 
 This script sends NEP-141 CNX from `deployerAccountId` in the NEAR config file, registers the target recipient storage when required, waits 30 seconds after the transfer transaction, queries `ft_balance_of`, and verifies the target recipient balance increased by the transfer amount.
 
-### 7) Query Global NEAR CNX Information
+### 8) Query Global NEAR CNX Information
 
 1. Query global NEAR CNX token information:
    - `npx tsx deployments/primary/scripts/near/query-cnx-on-near.ts --network=<testnet|mainnet>`

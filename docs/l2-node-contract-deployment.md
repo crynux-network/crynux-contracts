@@ -1,83 +1,98 @@
-# L2 Node Contract Relationships
+# L2 Node Contract Deployment
 
-This document specifies the active L2 contract relationships and authority addresses required by Crynux node operation.
+This document specifies the active L2 contract relationships, deployment parameters, and governance handoff.
 
-## Contract Scope
+## Contract Scope and Relationships
 
-The active non-token Relay integration contracts on L2 MUST be:
+The active non-token Relay integration contracts MUST be:
 
 | Contract | Responsibility |
 |----------|----------------|
-| `Credits.sol` | MUST store bootstrap staking credits and enforce that only the configured staking contract can move credits into or out of staking. |
-| `BenefitAddress.sol` | MUST store immutable node payout address bindings. |
-| `DelegatedStaking.sol` | MUST store delegated staking state, node delegator shares, and delegated-stake slash handling. |
-| `NodeStaking.sol` | MUST store operator staking state and execute Relay-authorized operator unstake and slash actions. |
+| `BenefitAddress.sol` | Store each node's one-time payout address binding |
+| `NodeStaking.sol` | Store native CNX operator stake and execute Relay-authorized unstake and slash |
+| `DelegatedStaking.sol` | Store native CNX delegated stake and execute Relay-authorized delegated slash |
 
-`CrynuxToken.sol` is outside the L2 node contract relationship scope. Token deployment belongs to the separate token flow.
+`NodeStaking` MUST receive `BenefitAddress` and `slashReceiver` in its constructor. Both bindings MUST remain fixed after deployment.
 
-The legacy task consensus contracts listed as legacy in `contract-roles-and-status.md` MUST NOT be part of the active L2 node contract relationship set.
+`DelegatedStaking` MUST receive `slashReceiver` in its constructor. The binding MUST remain fixed after deployment.
 
-## Contract Relationships
+`NodeStaking` MUST read `BenefitAddress.getBenefitAddress(address)` before returning native CNX. It MUST send the return to the configured benefit address or to the node address when no benefit address is configured.
 
-`NodeStaking` MUST reference:
+`NodeStaking` and `DelegatedStaking` MUST NOT call each other during slash. Relay MUST execute operator slash and delegated slash as separate fixed operations.
 
-- `Credits`
-- `BenefitAddress`
+Node staking MUST use native CNX only. The requested target amount MUST equal the existing native stake plus `msg.value` for an increase. A decrease MUST use zero `msg.value`.
 
-`Credits` MUST reference `NodeStaking` as its staking contract.
+## Initial Deployment
 
-`Credits`, `DelegatedStaking`, and `NodeStaking` MUST each store a `parameterController` address and MUST accept governed operational parameter updates only from that controller after initialization.
-
-The `parameterController` address in each target contract MUST be initialized exactly once and MUST NOT be changed afterward.
-
-`Credits.stakingAddress` MUST be initialized once during deployment and MUST NOT be changed afterward. This contract linkage address MUST NOT be controlled through `ParameterController`.
-
-`NodeStaking` MUST call `Credits.stakeCredits(address,uint256)` when bootstrap credits are moved into operator staking.
-
-`NodeStaking` MUST call `Credits.unstakeCredits(address,uint256)` when staked credits are returned during operator unstake.
-
-`NodeStaking` MUST read `BenefitAddress.getBenefitAddress(address)` before returning staked native balance. When a node has a configured benefit address, the returned native balance MUST be sent to that benefit address. When no benefit address is configured, the returned native balance MUST be sent to the node address.
-
-`NodeStaking` MUST NOT call `DelegatedStaking` when a node is slashed. Relay MUST process delegated slash separately after `NodeStaking.NodeSlashed` is confirmed.
-
-`NodeStaking` and `DelegatedStaking` MUST receive `slashReceiverAddress` in their constructors. Slashed native balance MUST be sent to that immutable receiver address.
-
-## Authority Addresses
-
-The deployer account MUST become the owner of `Credits`, `BenefitAddress`, `DelegatedStaking`, `NodeStaking`, and `ParameterController` at deployment time.
-
-`parameterWriterAddress` MUST be set on `ParameterController` at deployment time as the initial writer address. Governed operational parameter updates MUST be routed through `ParameterController` typed writer-gated methods.
-
-`slashReceiverAddress` MUST be provided at deployment time for both `NodeStaking` and `DelegatedStaking`. This address MUST NOT be zero and MUST NOT be changeable after deployment.
-
-The deployment parameter file for `DeployNodeContracts` MUST use this shape:
+The deployment parameter file MUST use this shape:
 
 ```json
 {
     "DeployNodeContracts": {
         "relayOperatorAddress": "0x000000000000000000000000000000000000dEaD",
-        "creditsAdminAddress": "0x000000000000000000000000000000000000bEEF",
-        "parameterWriterAddress": "0x000000000000000000000000000000000000c0De",
-        "slashReceiverAddress": "0x000000000000000000000000000000000000FEE1"
+        "slashReceiverAddress": "0x000000000000000000000000000000000000FEE1",
+        "nodeMinStakeAmount": "400000000000000000000",
+        "delegatedMinStakeAmount": "400000000000000000000",
+        "forceUnstakeDelay": 1800
     }
 }
 ```
 
-`relayOperatorAddress` MUST be the address that signs Relay runtime transactions for `NodeStaking` and `DelegatedStaking`. This address is authorized to call:
+`relayOperatorAddress` and `slashReceiverAddress` MUST be nonzero.
+
+`nodeMinStakeAmount`, `delegatedMinStakeAmount`, and `forceUnstakeDelay` MUST be positive. Their defaults MUST be `400e18`, `400e18`, and `1800` seconds.
+
+The module MUST deploy contracts in this order:
+
+1. Deploy `BenefitAddress`.
+2. Deploy `DelegatedStaking` with the fixed slash receiver.
+3. Deploy `NodeStaking` with the fixed BenefitAddress and slash receiver.
+4. Set both `adminAddress` values to `relayOperatorAddress`.
+5. Set both minimum stake amounts and the force-unstake delay.
+
+The deployer MUST be the initial Owner of both staking contracts. Both observers MUST initially be zero because `CouncilRegistry` requires the staking addresses in its constructor. Until the corresponding observer is set to a nonzero contract, every operation that changes a stake amount MUST revert. `NodeStaking.tryUnstake` MUST also revert because it starts the later Relay or force-unstake flow.
+
+New deployments MUST use a deployment ID that does not reuse the historical Credits and ParameterController journal. New deployment output MUST contain only `benefitAddress`, `nodeStaking`, `delegatedStaking`, and the deployment block number. Existing `contracts.json` records containing Credits and ParameterController MUST remain unchanged as historical records.
+
+## Runtime Authority
+
+`relayOperatorAddress` MUST be authorized only for:
 
 - `NodeStaking.unstake(address)`
 - `NodeStaking.slashStaking(address)`
 - `DelegatedStaking.slashNodeDelegations(address,address[])`
 
-`creditsAdminAddress` MUST be the address that signs bootstrap credit issuance transactions for `Credits`. This address is authorized to call:
+The Relay signer MUST NOT select a refund receiver or slash receiver. Node refunds MUST follow the fixed BenefitAddress lookup. Slash funds MUST use the constructor-fixed receiver.
 
-- `Credits.createCredits(address,uint256)`
+Owner MUST be authorized only for the staking setters listed in `owner-controlled-parameters.md` and standard ownership transfer. The staking contracts MUST NOT expose arbitrary withdrawal, rescue, external-call, implementation-replacement, or proxy-upgrade methods.
 
-`creditsAdminAddress` is not required by the Relay runtime staking and slashing flow unless Relay also signs bootstrap credit issuance transactions.
+## Governance Configuration
 
-`NodeStaking` MUST be the `stakingAddress` configured in `Credits`. This contract address is authorized to call:
+After `CouncilRegistry` and `CouncilGovernor` are deployed, the current staking Owner MUST:
 
-- `Credits.stakeCredits(address,uint256)`
-- `Credits.unstakeCredits(address,uint256)`
+1. Verify `NodeStaking.ba` equals the deployed BenefitAddress.
+2. Verify both `slashReceiver` values equal the deployment parameter.
+3. Verify both `owner` values equal the account executing the configuration.
+4. Set both observers to `CouncilRegistry`.
+5. Transfer both ownerships to `CouncilGovernor`.
 
-Relay blockchain configuration MUST reference `BenefitAddress`, `Credits`, `NodeStaking`, and `DelegatedStaking` for the corresponding L2 network.
+The post-deployment parameter file MUST use this shape:
+
+```json
+{
+    "ConfigureGovernedStaking": {
+        "nodeStakingAddress": "0x0000000000000000000000000000000000000001",
+        "delegatedStakingAddress": "0x0000000000000000000000000000000000000002",
+        "councilRegistryAddress": "0x0000000000000000000000000000000000000003",
+        "councilGovernorAddress": "0x0000000000000000000000000000000000000004"
+    }
+}
+```
+
+The observer calls MUST occur after staking storage updates and before native CNX transfers. A zero or reverting observer MUST revert the complete amount-changing staking operation. Setting an observer to zero MUST pause stake-amount changes and `NodeStaking.tryUnstake` until a new nonzero observer is configured. Reentrancy protection MUST cover every staking entry point that invokes an observer.
+
+## Deployment Boundary
+
+Existing mainnet and testnet contracts are non-proxy contracts and MUST NOT change in place. The current implementation MUST be enabled only through deployment at new addresses.
+
+This deployment SHALL NOT migrate existing stake or change Relay, Admin, Portal, governance-contracts, or other repository integrations.

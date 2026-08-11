@@ -4,107 +4,66 @@ This document specifies the role of each top-level contract in `crynux-contracts
 
 ## Architecture Boundary
 
-The current production architecture SHALL keep task dispatching, task assignment, task validation, and task lifecycle orchestration off-chain in Relay.
+The production architecture SHALL keep task dispatching, task assignment, task validation, and task lifecycle orchestration off-chain in Relay.
 
-The smart contracts in current production usage MUST retain only on-chain state that Relay or node operators require for:
+The active smart contracts MUST retain only on-chain state required for node staking, delegated staking, beneficial address binding, governed operational parameters, parent-chain token representation, and emission.
 
-- node staking
-- delegated staking
-- bootstrap credits
-- beneficial address binding
-- governed operational parameter control
-- parent chain ERC-20 token representation for L2 rollup launch requirements
-
-Contracts that implement the earlier fully on-chain task consensus design are retained in this repository, but they MUST NOT be treated as the active Relay integration surface.
+`Credits.sol`, `ParameterController.sol`, and `ParameterControlled.sol` do not belong to the current architecture. They MUST NOT be deployed, imported, or referenced by new integrations.
 
 ## Active Relay Integration Set
 
-The active on-chain contract set for Relay integration MUST be:
-
 | Contract | Status | Purpose |
 |----------|--------|---------|
-| `NodeStaking.sol` | Active | Operator staking source of truth and operator-side slash execution |
-| `DelegatedStaking.sol` | Active | Delegator staking source of truth, delegator share, and delegated-stake slash execution |
-| `Credits.sol` | Active | Bootstrap staking credits for first-node onboarding in the testnet flow |
-| `BenefitAddress.sol` | Active | Immutable payout binding for node-side balance returns and external payout systems |
-| `ParameterController.sol` | Active | Writer-gated governance controller for operational staking and credits parameters |
-| `CrynuxToken.sol` | Active | Parent chain ERC-20 Crynux token for L2 rollup launch requirements |
-| `EmissionERC20.sol` | Active | Time-gated ERC-20 emission schedule execution for EVM L1 and mirror environments that require an on-chain emission contract |
+| `NodeStaking.sol` | Active | Native CNX operator staking, unstake, slash, and stake-change notification |
+| `DelegatedStaking.sol` | Active | Native CNX delegation, delegator share, slash, and stake-change notification |
+| `BenefitAddress.sol` | Active | One-time node payout binding |
+| `CrynuxToken.sol` | Active | Parent-chain ERC-20 representation required by L2 launch |
+| `EmissionERC20.sol` | Active | Time-gated ERC-20 emission for applicable EVM environments |
 
-Relay configuration and client initialization MUST reference the staking and credits contracts as the runtime integration boundary. Governance and operator tooling that updates operational parameters MUST reference `ParameterController.sol`.
+Relay configuration MUST reference `NodeStaking`, `DelegatedStaking`, and `BenefitAddress`. Governance MUST update supported staking parameters through the staking contracts' `onlyOwner` setters.
 
 ## Active Contract Responsibilities
 
 ### `NodeStaking.sol`
 
-`NodeStaking.sol` MUST be the source of truth for operator-side staking. It MUST manage node operator stake amounts and staking status, enforce the minimum operator stake, support Relay-triggered unstake and operator slash through the configured `adminAddress`, and expose staking data for Relay synchronization. It MUST integrate with `Credits.sol` for bootstrap staking credits and `BenefitAddress.sol` for unstake payout destination. It MUST accept governed operational parameter updates only from the configured parameter controller. Its `slashReceiverAddress` MUST be constructor-configured and immutable after deployment.
+`NodeStaking` MUST accept native CNX only. It MUST store operator stake amounts and status, enforce `minStakeAmount`, support Relay-authorized unstake and slash through `adminAddress`, and resolve unstake payouts through the constructor-fixed `BenefitAddress`.
+
+`NodeStaking` MUST keep `BenefitAddress` and `slashReceiver` fixed after deployment. It MUST allow Owner to update `adminAddress`, `minStakeAmount`, `forceUnstakeDelay`, and `observer` with validated setters and change events.
+
+After a stake amount changes, `NodeStaking` MUST notify the nonzero observer with the node address after storage updates and before any native CNX transfer. A zero or reverting observer MUST revert the complete amount-changing transaction. `tryUnstake` MUST require a nonzero observer because it starts the later Relay or force-unstake flow, but it MUST NOT notify the observer because the amount has not changed. A `stake` call that keeps the amount unchanged MUST NOT notify the observer.
 
 ### `DelegatedStaking.sol`
 
-`DelegatedStaking.sol` MUST be the source of truth for delegated staking and delegator share. It MUST manage delegation amounts and node-level delegator share, expose paginated node staking views for Relay synchronization, and execute Relay-admin delegated slash batches through `slashNodeDelegations(address,address[])`. It MUST emit one `DelegatorSlashed` event per slashed delegator. Setting delegator share to `0` MUST update only share and available-node state. It MUST accept governed operational parameter updates only from the configured parameter controller. Its slash admin address MUST be set through `ParameterController.sol`. Its `slashReceiverAddress` MUST be constructor-configured and immutable after deployment.
+`DelegatedStaking` MUST store delegation amounts and node delegator shares, expose staking views for Relay synchronization, and execute Relay-authorized delegated slash batches through `slashNodeDelegations(address,address[])`.
 
-### `Credits.sol`
+`DelegatedStaking` MUST keep `slashReceiver` fixed after deployment. It MUST allow Owner to update `adminAddress`, `minStakeAmount`, and `observer` with validated setters and change events.
 
-`Credits.sol` MUST provide bootstrap staking credits for node onboarding. In the current testnet flow, it MUST support off-chain approved credit minting for new operators, staking-only movement of credits into node staking, and unstake-only return of those credits. It MUST remain active even though it is not part of task dispatching, because Relay uses it for the credits request flow and staked credits remain slashable once moved into `NodeStaking.sol`. Its `stakingAddress` MUST be initialized once during deployment and MUST NOT be changed afterward. It MUST accept governed operational parameter updates only from the configured parameter controller.
-
-### `ParameterController.sol`
-
-`ParameterController.sol` MUST provide writer-gated governance execution for operational parameters on `NodeStaking.sol`, `DelegatedStaking.sol`, and `Credits.sol`. It MUST enforce that only the configured writer can execute supported parameter update calls, and it MUST allow owner-controlled writer handoff for governance transition.
+After a delegator's total stake changes, `DelegatedStaking` MUST notify the nonzero observer with the delegator address after storage updates and before any native CNX transfer. A batch slash MUST notify every affected delegator. A zero or reverting observer MUST revert the complete amount-changing transaction or batch. `setDelegatorShare` and a `stake` call that keeps the amount unchanged MUST NOT notify the observer.
 
 ### `BenefitAddress.sol`
 
-`BenefitAddress.sol` MUST provide the immutable mapping from a node operational address to its beneficial address. It MUST remain outside task dispatching and task validation, while staying active as the payout destination source of truth for operator-side unstake returns and Relay-controlled withdrawal flows.
+`BenefitAddress` MUST allow each node to set one nonzero benefit address exactly once. Owner MUST NOT set, replace, or clear a node's benefit address.
 
 ### `CrynuxToken.sol`
 
-`CrynuxToken.sol` MUST provide the ERC-20 Crynux token representation on the parent chain required by L2 rollup chain launch flows. It MUST remain outside task dispatching, task assignment, and task validation.
+`CrynuxToken` MUST provide the parent-chain ERC-20 Crynux token representation required by L2 launch flows. It MUST remain outside task dispatching, task assignment, and task validation.
 
 ### `EmissionERC20.sol`
 
-`EmissionERC20.sol` MUST hold the locked CNX emission inventory and release CNX by a fixed, hardcoded schedule. It MUST support `Primary` and `Mirror` modes selected at deployment time. The `daoTreasuryAddress` and `relayWalletColdAddress` MUST be constructor-configured and immutable after deployment.
+`EmissionERC20` MUST hold locked CNX inventory and release CNX according to its fixed schedule. `daoTreasuryAddress` and `relayWalletColdAddress` MUST remain constructor-configured and immutable.
 
-In `Primary` mode, each due emission period MUST distribute CNX between `daoTreasuryAddress` and `relayWalletColdAddress` by the configured year-based percentages. In `Mirror` mode, each due emission period MUST transfer all emitted CNX to `relayWalletColdAddress`, and MUST NOT transfer emission CNX to `daoTreasuryAddress`.
+In `Primary` mode, each due period MUST distribute CNX according to the configured year schedule. In `Mirror` mode, each due period MUST transfer all emitted CNX to `relayWalletColdAddress`.
 
-The emission execution entrypoint MUST be public and time-gated. If one or more past periods were missed, later calls MUST release the next unpaid period in order until caught up. A completed period MUST NOT be released more than once.
+## Ownership
 
-`EmissionERC20.sol` MUST be used for EVM-based L1 deployments. L2 MUST NOT deploy a separate token contract. When native CNX bridging from L1 to L2 exists, L2 MUST NOT deploy an emission contract. When native CNX bridging does not exist, L2 mirror emission MAY be implemented with `EmissionERC20.sol`.
+The deployer MUST initially own `NodeStaking`, `DelegatedStaking`, and `BenefitAddress`. After `CouncilRegistry` is configured as both staking observers, ownership of both staking contracts MUST transfer to `CouncilGovernor`.
 
-## Legacy Contract Stack Retained in Repository
+Ownership MUST NOT provide a method to replace `BenefitAddress`, replace either `slashReceiver`, write user staking balances, write delegator share, write benefit-address mappings, withdraw arbitrary native CNX, or execute arbitrary external calls.
 
-The following contracts implement the earlier fully on-chain consensus and task dispatching design. They are retained in the repository, but they MUST NOT be treated as the active Relay integration surface.
+## Legacy Contract Stack
 
-| Contract | Legacy role | Current status |
-|----------|-------------|----------------|
-| `VSSTask.sol` | On-chain task lifecycle, validation sampling, and slash trigger | Legacy |
-| `Node.sol` | On-chain node registry, availability state, and legacy slash path | Legacy |
-| `TaskQueue.sol` | On-chain task queue and scheduling support | Legacy |
-| `QOS.sol` | On-chain QoS scoring for the legacy task path | Legacy |
-| `NetworkStats.sol` | On-chain network and task statistics for the legacy task path | Legacy |
-| `Random.sol` | Randomness helper for the legacy task path | Legacy |
+`VSSTask.sol`, `Node.sol`, `TaskQueue.sol`, `QOS.sol`, `NetworkStats.sol`, and `Random.sol` implement the earlier on-chain task design. They MUST NOT be treated as the active Relay integration surface.
 
-### Legacy `VSSTask` Path
+Historical deployment records that contain Credits or ParameterController addresses MUST remain historical records. They MUST NOT be treated as evidence that the current implementation has been deployed.
 
-`VSSTask.sol` imports `Node.sol` and calls `node.slash(taskInfo.selectedNode)` on `TaskStatus.EndInvalidated`.
-
-This path belongs to the earlier design in which task dispatching and validation were executed on-chain.
-
-This path MUST be treated as obsolete for the current Relay architecture.
-
-### Legacy Deployment Artifacts
-
-Historical migration scripts and Hardhat test fixtures deployed the legacy `Node` and `Task` stack.
-
-Those scripts and tests MUST be interpreted as legacy coverage for the earlier on-chain consensus design. They MUST NOT be used as the source of truth for the current Relay integration set.
-
-## Source of Truth for Current Integration
-
-For the current production architecture, the source of truth for contract usage MUST be:
-
-1. the Relay blockchain contract configuration
-2. the Relay blockchain client bindings
-3. the active staking and delegation flows implemented around `NodeStaking.sol`, `DelegatedStaking.sol`, `Credits.sol`, and `BenefitAddress.sol`
-4. the active governed parameter update flow implemented around `ParameterController.sol`
-5. the parent chain ERC-20 token deployment flow implemented around `CrynuxToken.sol`
-6. the active Primary and Mirror emission release flow implemented around `EmissionERC20.sol`
-
-The presence of additional contracts in this repository SHALL NOT imply active production usage.
+Existing deployed staking contracts are non-proxy contracts. Their bytecode and storage MUST NOT change in place. Enabling the current implementation requires deployment at new addresses.

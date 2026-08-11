@@ -28,8 +28,9 @@
   },
   "crynux-contracts-params": {
     "relayOperatorAddress": "",
-    "creditsAdminAddress": "",
-    "parameterWriterAddress": "",
-    "slashReceiverAddress": ""
+    "slashReceiverAddress": "",
+    "nodeMinStakeAmount": "400000000000000000000",
+    "delegatedMinStakeAmount": "400000000000000000000",
+    "forceUnstakeDelay": 1800
   }
 }

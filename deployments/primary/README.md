@@ -105,7 +105,7 @@ The Primary environment deploys the emission contract only on Ethereum. Base and
    - `validatorAddress`
    - `crynux-contracts-params`
 
-`creditsAdminAddress` MUST be empty when bootstrap credit issuance is disabled.
+`crynux-contracts-params` MUST define the Relay operator, fixed slash receiver, both initial minimum stake amounts, and the initial force-unstake delay.
 
 #### 3.1) Operations On Base Chain
 
@@ -169,10 +169,17 @@ docker compose -f nitro-node/docker-compose.public.yml exec sequencer-redis \
    - This script MUST run only after `create-token-bridge.ts` completes successfully.
 6. Deploy Crynux node contracts:
    - `npx tsx deployments/primary/scripts/crynux-on-base/deploy-crynux-contracts.ts --network=<testnet|mainnet>`
-   - This script reads `crynux-contracts-params`, writes Ignition parameters, deploys `Credits`, `BenefitAddress`, `DelegatedStaking`, `NodeStaking`, and `ParameterController`, and writes addresses to `<network>/<crynux-layer>/contracts.json`.
+   - This script reads `crynux-contracts-params`, writes Ignition parameters, deploys `BenefitAddress`, `DelegatedStaking`, and `NodeStaking`, and writes the new addresses as `nodeContractsV2` in `<network>/<crynux-layer>/contracts.json`.
+   - Historical `nodeContracts` records containing Credits and ParameterController addresses MUST remain unchanged.
 7. Run withdrawal and claim operations:
    - `npx tsx deployments/primary/scripts/crynux-on-base/withdraw-crynux-to-base.ts <amount> [destinationAddress] --network=<testnet|mainnet>`
    - `npx tsx deployments/primary/scripts/crynux-on-base/claim-crynux-withdrawal.ts <withdrawalTxHash> --network=<testnet|mainnet>`
+8. Lock and unlock value-bearing CNX withdrawals from Crynux-on-Base to Base:
+   - `npx tsx deployments/primary/scripts/crynux-on-base/add-native-token-owner.ts <ownerAddress> --network=<testnet|mainnet>`
+   - `npx tsx deployments/primary/scripts/crynux-on-base/remove-native-token-owner.ts <ownerAddress> --network=<testnet|mainnet>`
+   - While at least one native token owner is registered, ArbOS rejects every value-bearing L2-to-L1 message, including `withdraw-crynux-to-base.ts`. Removing the last native token owner re-opens withdrawals.
+   - `<ownerAddress>` gains `mintNativeToken` and `burnNativeToken` permission on the `ArbNativeTokenManager` precompile and MUST be a strictly controlled address.
+   - On the first run, `add-native-token-owner.ts` enables native token management with the mandatory 7-day activation delay. The script MUST be re-run after the printed activation time to register the owner.
 
 ## Nitro And DAS Files
 

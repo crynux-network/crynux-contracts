@@ -27,7 +27,23 @@ export default defineConfig({
     ignition: {
         requiredConfirmations: ignitionRequiredConfirmations,
     },
+    chainDescriptors: {
+        18896214: {
+            name: "Crynux on Base",
+            chainType: "generic",
+            blockExplorers: {
+                blockscout: {
+                    name: "CNXScan Base",
+                    url: "https://cnxscan.base.crynux.io",
+                    apiUrl: "https://api.cnxscan.base.crynux.io/api",
+                },
+            },
+        },
+    },
     verify: {
+        blockscout: {
+            enabled: true,
+        },
         etherscan: {
             apiKey: configVariable("ETHERSCAN_API_KEY"),
         },
