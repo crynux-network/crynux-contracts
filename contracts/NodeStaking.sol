@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.18;
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "./Credits.sol";
 import "./BenefitAddress.sol";
-import "./ParameterControlled.sol";
+import "./interfaces/IStakeObserver.sol";
 
-contract NodeStaking is ParameterControlled {
+contract NodeStaking is Ownable, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.AddressSet;
+
+    error OwnershipRenouncementDisabled();
 
     uint256 private minStakeAmount = 400 * 10 ** 18;
     uint256 private forceUnstakeDelay = 1800;
@@ -20,60 +23,71 @@ contract NodeStaking is ParameterControlled {
     struct StakingInfo {
         address nodeAddress;
         uint stakedBalance;
-        uint stakedCredits;
         StakingStatus status;
         uint unstakeTimestamp;
     }
 
-    event NodeStaked(
-        address indexed nodeAddress,
-        uint stakedBalance,
-        uint stakedCredits
-    );
+    event NodeStaked(address indexed nodeAddress, uint stakedBalance);
     event NodeTryUnstaked(address indexed nodeAddress);
-    event NodeUnstaked(
-        address indexed nodeAddress,
-        uint stakedBalance,
-        uint stakedCredits
-    );
-    event NodeSlashed(
-        address indexed nodeAddress,
-        uint stakedBalance,
-        uint stakedCredits
-    );
+    event NodeUnstaked(address indexed nodeAddress, uint stakedBalance);
+    event NodeSlashed(address indexed nodeAddress, uint stakedBalance);
+    event AdminAddressUpdated(address indexed oldAddress, address indexed newAddress);
+    event MinStakeAmountUpdated(uint256 oldAmount, uint256 newAmount);
+    event ForceUnstakeDelayUpdated(uint256 oldDelay, uint256 newDelay);
+    event ObserverUpdated(address indexed oldObserver, address indexed newObserver);
 
     // store all staking info
     EnumerableSet.AddressSet private allNodeAddresses;
     mapping(address => StakingInfo) private nodeStakingMap;
 
-    Credits private credits;
-    BenefitAddress private ba;
+    BenefitAddress public immutable ba;
     address private adminAddress;
-    address private immutable slashReceiver;
+    address public immutable slashReceiver;
+    IStakeObserver private observer;
 
     constructor(
-        address creditsContract,
         address benefitAddressContract,
         address slashReceiverAddress
-    ) {
+    ) Ownable(msg.sender) {
+        require(benefitAddressContract != address(0), "benefit address is zero");
         require(slashReceiverAddress != address(0), "slash receiver is zero");
-        credits = Credits(creditsContract);
         ba = BenefitAddress(benefitAddressContract);
         slashReceiver = slashReceiverAddress;
     }
 
-    function setAdminAddress(address addr) external onlyParameterController {
+    function renounceOwnership() public view override onlyOwner {
+        revert OwnershipRenouncementDisabled();
+    }
+
+    function setAdminAddress(address addr) external onlyOwner {
+        require(addr != address(0), "admin address is zero");
+        address oldAddress = adminAddress;
         adminAddress = addr;
+        emit AdminAddressUpdated(oldAddress, addr);
     }
 
-    function setMinStakeAmount(uint stakeAmount) public onlyParameterController {
+    function setMinStakeAmount(uint stakeAmount) public onlyOwner {
         require(stakeAmount > 0, "minimum stake amount is 0");
+        uint oldAmount = minStakeAmount;
         minStakeAmount = stakeAmount;
+        emit MinStakeAmountUpdated(oldAmount, stakeAmount);
     }
 
-    function setForceUnstakeDelay(uint delay) public onlyParameterController {
+    function setForceUnstakeDelay(uint delay) public onlyOwner {
         require(delay > 0, "force unstake delay is 0");
+        uint oldDelay = forceUnstakeDelay;
         forceUnstakeDelay = delay;
+        emit ForceUnstakeDelayUpdated(oldDelay, delay);
+    }
+
+    function setObserver(address addr) external onlyOwner {
+        require(
+            addr == address(0) || addr.code.length > 0,
+            "observer is not a contract"
+        );
+        address oldObserver = address(observer);
+        observer = IStakeObserver(addr);
+        emit ObserverUpdated(oldObserver, addr);
     }
 
     // public api for node
@@ -116,7 +130,7 @@ contract NodeStaking is ParameterControlled {
         return nodes;
     }
 
-    function stake(uint stakedAmount) public payable {
+    function stake(uint stakedAmount) public payable nonReentrant {
         require(stakedAmount >= minStakeAmount, "Staked amount is too low");
 
         StakingInfo memory currentStakingInfo = nodeStakingMap[msg.sender];
@@ -125,43 +139,17 @@ contract NodeStaking is ParameterControlled {
                 currentStakingInfo.status == StakingStatus.Staked,
             "Wrong staking status"
         );
-        uint currentStakedAmount = currentStakingInfo.stakedBalance +
-            currentStakingInfo.stakedCredits;
+        uint currentStakedAmount = currentStakingInfo.stakedBalance;
+        uint refundAmount = 0;
 
         if (currentStakedAmount < stakedAmount) {
-            uint stakedBalance = 0;
-            uint stakedCredits = 0;
             uint diff = stakedAmount - currentStakedAmount;
-            uint stakableCredits = credits.getCredits(msg.sender);
-            if (diff <= stakableCredits) {
-                stakedCredits = diff;
-                stakedBalance = 0;
-            } else {
-                stakedCredits = stakableCredits;
-                stakedBalance = diff - stakableCredits;
-            }
-            require(msg.value == stakedBalance, "Inconsistent staked balance");
-            credits.stakeCredits(msg.sender, stakedCredits);
-            nodeStakingMap[msg.sender].stakedBalance += stakedBalance;
-            nodeStakingMap[msg.sender].stakedCredits += stakedCredits;
+            require(msg.value == diff, "Inconsistent staked balance");
+            nodeStakingMap[msg.sender].stakedBalance = stakedAmount;
         } else if (currentStakedAmount > stakedAmount) {
             require(msg.value == 0, "Inconsistent staked balance");
-            uint diff = currentStakedAmount - stakedAmount;
-            if (diff <= currentStakingInfo.stakedBalance) {
-                nodeStakingMap[msg.sender].stakedBalance -= diff;
-                // return the staked balance
-                returnBalance(msg.sender, diff);
-            } else {
-                nodeStakingMap[msg.sender].stakedBalance = 0;
-                nodeStakingMap[msg.sender].stakedCredits = stakedAmount;
-                // return the staked balance
-                if (currentStakingInfo.stakedBalance > 0) {
-                    returnBalance(msg.sender, currentStakingInfo.stakedBalance);
-                }
-                // return the staked credits
-                uint creditsDiff = diff - currentStakingInfo.stakedBalance;
-                credits.unstakeCredits(msg.sender, creditsDiff);
-            }
+            refundAmount = currentStakedAmount - stakedAmount;
+            nodeStakingMap[msg.sender].stakedBalance = stakedAmount;
         } else {
             require(msg.value == 0, "Inconsistent staked balance");
         }
@@ -169,14 +157,18 @@ contract NodeStaking is ParameterControlled {
         nodeStakingMap[msg.sender].nodeAddress = msg.sender;
         nodeStakingMap[msg.sender].status = StakingStatus.Staked;
         allNodeAddresses.add(msg.sender);
-        emit NodeStaked(
-            msg.sender,
-            nodeStakingMap[msg.sender].stakedBalance,
-            nodeStakingMap[msg.sender].stakedCredits
-        );
+        emit NodeStaked(msg.sender, nodeStakingMap[msg.sender].stakedBalance);
+
+        if (currentStakedAmount != stakedAmount) {
+            _notifyStakeChanged(msg.sender);
+        }
+        if (refundAmount > 0) {
+            returnBalance(msg.sender, refundAmount);
+        }
     }
 
     function tryUnstake() public {
+        _requireObserverConfigured();
         require(allNodeAddresses.contains(msg.sender), "Node not staked");
         require(
             nodeStakingMap[msg.sender].status == StakingStatus.Staked,
@@ -187,7 +179,7 @@ contract NodeStaking is ParameterControlled {
         emit NodeTryUnstaked(msg.sender);
     }
 
-    function forceUnstake() public {
+    function forceUnstake() public nonReentrant {
         require(allNodeAddresses.contains(msg.sender), "Node not staked");
         require(
             nodeStakingMap[msg.sender].status == StakingStatus.PendingUnstaked,
@@ -202,7 +194,7 @@ contract NodeStaking is ParameterControlled {
     }
 
     // public api for admin
-    function unstake(address nodeAddress) public {
+    function unstake(address nodeAddress) public nonReentrant {
         require(msg.sender == adminAddress, "Not called by the admin");
         require(allNodeAddresses.contains(nodeAddress), "Node not staked");
         // status can be StakingStatus.Staked to support relay kick out node
@@ -213,45 +205,42 @@ contract NodeStaking is ParameterControlled {
         _unstake(nodeAddress);
     }
 
-    function slashStaking(address nodeAddress) public {
+    function slashStaking(address nodeAddress) public nonReentrant {
         require(msg.sender == adminAddress, "Not called by the admin");
         require(allNodeAddresses.contains(nodeAddress), "Node not staked");
         uint stakedBalance = nodeStakingMap[nodeAddress].stakedBalance;
-        uint stakedCredits = nodeStakingMap[nodeAddress].stakedCredits;
-        uint stakeAmount = stakedBalance + stakedCredits;
-        require(stakeAmount > 0, "Staking is zero");
+        require(stakedBalance > 0, "Staking is zero");
+
+        allNodeAddresses.remove(nodeAddress);
+        delete nodeStakingMap[nodeAddress];
+        emit NodeSlashed(nodeAddress, stakedBalance);
+        _notifyStakeChanged(nodeAddress);
+
         if (stakedBalance > 0) {
-            require(slashReceiver != address(0), "slash receiver not set");
             (bool success, ) = slashReceiver.call{value: stakedBalance}("");
             require(success, "Token transfer failed");
         }
-        // remove node
-        allNodeAddresses.remove(nodeAddress);
-        delete nodeStakingMap[nodeAddress];
-        emit NodeSlashed(nodeAddress, stakedBalance, stakedCredits);
     }
 
     function _unstake(address nodeAddress) internal {
         uint stakedBalance = nodeStakingMap[nodeAddress].stakedBalance;
-        uint stakedCredits = nodeStakingMap[nodeAddress].stakedCredits;
-        uint stakeAmount = stakedBalance + stakedCredits;
-        require(stakeAmount > 0, "Staking is zero");
+        require(stakedBalance > 0, "Staking is zero");
 
-        // Return the staked balance
-        if (stakedBalance > 0) {
-            nodeStakingMap[nodeAddress].stakedBalance = 0;
-            returnBalance(nodeAddress, stakedBalance);
-        }
-
-        // Return the credits
-        if (stakedCredits > 0) {
-            credits.unstakeCredits(nodeAddress, stakedCredits);
-        }
-
-        // remove node
         allNodeAddresses.remove(nodeAddress);
         delete nodeStakingMap[nodeAddress];
-        emit NodeUnstaked(nodeAddress, stakedBalance, stakedCredits);
+        emit NodeUnstaked(nodeAddress, stakedBalance);
+        _notifyStakeChanged(nodeAddress);
+
+        returnBalance(nodeAddress, stakedBalance);
+    }
+
+    function _notifyStakeChanged(address account) internal {
+        _requireObserverConfigured();
+        observer.onStakeChanged(account);
+    }
+
+    function _requireObserverConfigured() internal view {
+        require(address(observer) != address(0), "observer not configured");
     }
 
     function returnBalance(address nodeAddress, uint amount) internal {

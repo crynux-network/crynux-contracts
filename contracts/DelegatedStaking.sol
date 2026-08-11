@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.18;
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "./ParameterControlled.sol";
+import "./interfaces/IStakeObserver.sol";
 
-contract DelegatedStaking is ParameterControlled {
+contract DelegatedStaking is Ownable, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
+
+    error OwnershipRenouncementDisabled();
 
     struct StakingInfo {
         address delegatorAddress;
@@ -29,6 +33,9 @@ contract DelegatedStaking is ParameterControlled {
         uint amount
     );
     event NodeDelegatorShareChanged(address indexed nodeAddress, uint8 share);
+    event AdminAddressUpdated(address indexed oldAddress, address indexed newAddress);
+    event MinStakeAmountUpdated(uint256 oldAmount, uint256 newAmount);
+    event ObserverUpdated(address indexed oldObserver, address indexed newObserver);
 
     EnumerableSet.AddressSet private availableNodes;
     mapping(address => uint8) private nodeDelegatorShare;
@@ -45,27 +52,46 @@ contract DelegatedStaking is ParameterControlled {
     uint private minStakeAmount = 400 * 10 ** 18;
 
     address private adminAddress;
-    address private immutable slashReceiver;
+    address public immutable slashReceiver;
+    IStakeObserver private observer;
 
-    constructor(address slashReceiverAddress) {
+    constructor(address slashReceiverAddress) Ownable(msg.sender) {
         require(slashReceiverAddress != address(0), "slash receiver is zero");
         slashReceiver = slashReceiverAddress;
     }
 
+    function renounceOwnership() public view override onlyOwner {
+        revert OwnershipRenouncementDisabled();
+    }
+
     function setMinStakeAmount(
         uint stakeAmount
-    ) public onlyParameterController {
+    ) public onlyOwner {
         require(stakeAmount > 0, "minimum stake amount is 0");
+        uint oldAmount = minStakeAmount;
         minStakeAmount = stakeAmount;
+        emit MinStakeAmountUpdated(oldAmount, stakeAmount);
     }
 
     function getMinStakeAmount() public view returns (uint) {
         return minStakeAmount;
     }
 
-    function setAdminAddress(address addr) external onlyParameterController {
+    function setAdminAddress(address addr) external onlyOwner {
         require(addr != address(0), "admin address is zero");
+        address oldAddress = adminAddress;
         adminAddress = addr;
+        emit AdminAddressUpdated(oldAddress, addr);
+    }
+
+    function setObserver(address addr) external onlyOwner {
+        require(
+            addr == address(0) || addr.code.length > 0,
+            "observer is not a contract"
+        );
+        address oldObserver = address(observer);
+        observer = IStakeObserver(addr);
+        emit ObserverUpdated(oldObserver, addr);
     }
 
     function setDelegatorShare(uint8 share) public {
@@ -79,7 +105,7 @@ contract DelegatedStaking is ParameterControlled {
         }
     }
 
-    function stake(address nodeAddress, uint amount) public payable {
+    function stake(address nodeAddress, uint amount) public payable nonReentrant {
         require(
             nodeDelegatorShare[nodeAddress] > 0,
             "node delegator share is 0"
@@ -111,13 +137,16 @@ contract DelegatedStaking is ParameterControlled {
         delegatorAddresses.add(msg.sender);
         nodeAddresses.add(nodeAddress);
 
+        if (amount != oldAmount) {
+            _notifyStakeChanged(msg.sender);
+        }
         if (amount < oldAmount) {
             withdrawStaking(msg.sender, oldAmount - amount);
         }
         emit DelegatorStaked(msg.sender, nodeAddress, amount);
     }
 
-    function unstake(address nodeAddress) public {
+    function unstake(address nodeAddress) public nonReentrant {
         bytes32 stakingInfoID = keccak256(
             abi.encodePacked(msg.sender, nodeAddress)
         );
@@ -150,7 +179,7 @@ contract DelegatedStaking is ParameterControlled {
         delegatorStakeAmount[msg.sender] -= amount;
         nodeStakeAmount[nodeAddress] -= amount;
 
-        // withdraw staking tokens
+        _notifyStakeChanged(msg.sender);
         withdrawStaking(msg.sender, amount);
 
         emit DelegatorUnstaked(msg.sender, nodeAddress, amount);
@@ -166,7 +195,7 @@ contract DelegatedStaking is ParameterControlled {
     function slashNodeDelegations(
         address nodeAddress,
         address[] calldata delegators
-    ) public {
+    ) public nonReentrant {
         require(msg.sender == adminAddress, "Not called by the admin");
         require(delegators.length > 0, "delegators is empty");
 
@@ -204,6 +233,7 @@ contract DelegatedStaking is ParameterControlled {
 
             delete stakingInfos[stakingInfoID];
             emit DelegatorSlashed(delegatorAddress, nodeAddress, amount);
+            _notifyStakeChanged(delegatorAddress);
         }
         if (nodeStakeAmount[nodeAddress] == 0) {
             delete nodeStakeAmount[nodeAddress];
@@ -217,6 +247,11 @@ contract DelegatedStaking is ParameterControlled {
 
         (bool success, ) = slashReceiver.call{value: amount}("");
         require(success, "token transfer failed");
+    }
+
+    function _notifyStakeChanged(address account) internal {
+        require(address(observer) != address(0), "observer not configured");
+        observer.onStakeChanged(account);
     }
 
     function getNodeDelegatorShare(

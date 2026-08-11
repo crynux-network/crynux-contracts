@@ -89,9 +89,10 @@ Create a deployment parameter file for the L2 node contracts:
 {
     "DeployNodeContracts": {
         "relayOperatorAddress": "0x000000000000000000000000000000000000dEaD",
-        "creditsAdminAddress": "0x000000000000000000000000000000000000bEEF",
-        "parameterWriterAddress": "0x000000000000000000000000000000000000c0De",
-        "slashReceiverAddress": "0x000000000000000000000000000000000000FEE1"
+        "slashReceiverAddress": "0x000000000000000000000000000000000000FEE1",
+        "nodeMinStakeAmount": "400000000000000000000",
+        "delegatedMinStakeAmount": "400000000000000000000",
+        "forceUnstakeDelay": 1800
     }
 }
 ```
@@ -99,12 +100,34 @@ Create a deployment parameter file for the L2 node contracts:
 Parameter requirements:
 
 - `relayOperatorAddress`: Relay runtime signer for `NodeStaking.unstake` and `NodeStaking.slashStaking`.
-- `creditsAdminAddress`: bootstrap credit issuance signer for `Credits.createCredits`.
-- `parameterWriterAddress`: initial writer for `ParameterController` governed operational parameter updates.
 - `slashReceiverAddress`: immutable slash receiver for both `NodeStaking` and `DelegatedStaking`. This address is set in constructors and cannot be changed after deployment.
+- `nodeMinStakeAmount`: initial minimum native CNX node stake.
+- `delegatedMinStakeAmount`: initial minimum native CNX delegation.
+- `forceUnstakeDelay`: initial node force-unstake delay in seconds.
 
 Deploy the L2 node contracts with Hardhat Ignition:
 
 ```shell
 $ npm run deploy:l2:node-contracts -- --network <network> --parameters ./cache/deploy-l2-node-contracts-params.json
 ```
+
+The deployment creates `BenefitAddress`, `NodeStaking`, and `DelegatedStaking`. Node staking accepts native CNX only. Stake-amount changes and `NodeStaking.tryUnstake` remain paused until the corresponding staking observer is configured.
+
+After `CouncilRegistry` and `CouncilGovernor` are deployed, configure both staking observers to enable stake-amount changes, then transfer both staking ownerships:
+
+```json
+{
+    "ConfigureGovernedStaking": {
+        "nodeStakingAddress": "0x0000000000000000000000000000000000000001",
+        "delegatedStakingAddress": "0x0000000000000000000000000000000000000002",
+        "councilRegistryAddress": "0x0000000000000000000000000000000000000003",
+        "councilGovernorAddress": "0x0000000000000000000000000000000000000004"
+    }
+}
+```
+
+```shell
+$ npm run configure:l2:governed-staking -- --network <network> --parameters ./cache/configure-governed-staking-params.json
+```
+
+The current owner MUST verify `NodeStaking.ba`, both `slashReceiver` values, and both `owner` values before this handoff. Existing mainnet and testnet contracts are not proxies and do not change in place. This implementation requires new contract addresses. Existing stake migration and changes in Relay, Admin, Portal, governance contracts, and other repositories are outside this deployment.

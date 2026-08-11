@@ -46,9 +46,10 @@ export type CrynuxOnBaseConfig = {
   };
   'crynux-contracts-params': {
     relayOperatorAddress: Address | '';
-    creditsAdminAddress: Address | '';
-    parameterWriterAddress: Address | '';
     slashReceiverAddress: Address | '';
+    nodeMinStakeAmount: string;
+    delegatedMinStakeAmount: string;
+    forceUnstakeDelay: number;
   };
 };
 
@@ -60,6 +61,12 @@ export type CrynuxOnBaseContracts = {
     delegatedStaking: Address;
     nodeStaking: Address;
     parameterController: Address;
+    deployedAtBlockNumber: number;
+  };
+  nodeContractsV2?: {
+    benefitAddress: Address;
+    delegatedStaking: Address;
+    nodeStaking: Address;
     deployedAtBlockNumber: number;
   };
 };

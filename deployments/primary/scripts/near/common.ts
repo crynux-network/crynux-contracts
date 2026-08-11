@@ -39,6 +39,12 @@ export type NearContracts = {
   createdAtBlockHeight: number;
 };
 
+export type NearAccountBalance = {
+  amount: string;
+  locked: string;
+  storage_usage: number;
+};
+
 type NearAccessKeyListResponse = {
   error?: unknown;
   result?: {
@@ -46,6 +52,11 @@ type NearAccessKeyListResponse = {
       public_key: string;
     }>;
   };
+};
+
+type NearAccountViewResponse = {
+  error?: unknown;
+  result?: NearAccountBalance;
 };
 
 const ethereumChain = primaryRuntime.isTestnet ? ethereumSepolia : ethereumMainnet;
@@ -288,6 +299,48 @@ export async function sendNearBridgeTransaction(transaction: NearUnsignedTransac
   assertNearTransactionSucceeded(result);
 
   return result;
+}
+
+export async function sendNearTransaction(transaction: NearUnsignedTransaction) {
+  const result = await toNearKitTransaction(getNearClient(), transaction).send({ waitUntil: 'FINAL' }) as NearTransactionResult;
+  assertNearTransactionSucceeded(result);
+
+  return result;
+}
+
+export async function getNearAccountBalance(accountId: string): Promise<NearAccountBalance> {
+  const response = await fetch(nearNetworkContracts.nearRpcUrl, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 'crynux-primary-near-account-balance',
+      method: 'query',
+      params: {
+        request_type: 'view_account',
+        finality: 'final',
+        account_id: accountId,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`NEAR RPC account request failed: ${response.status} ${await response.text()}`);
+  }
+
+  const body = await response.json() as NearAccountViewResponse;
+
+  if (body.error !== undefined) {
+    throw new Error(`NEAR RPC returned an account error: ${JSON.stringify(body.error)}`);
+  }
+
+  if (body.result === undefined) {
+    throw new Error(`NEAR RPC returned an unexpected account response: ${JSON.stringify(body)}`);
+  }
+
+  return body.result;
 }
 
 export function getEthereumCrynuxTokenAddress(): Address {

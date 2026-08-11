@@ -1,3 +1,10 @@
+## Document Index
+
+- `contract-roles-and-status.md`: active and legacy contract roles under the Relay architecture.
+- `l2-node-contract-deployment.md`: L2 node contract relationships, deployment parameters, and governance handoff.
+- `owner-controlled-parameters.md`: authoritative classification and modification rights for staking parameters, bindings, ownership, observers, and user state.
+- `emission.md`: CNX emission topology and accounting.
+
 ## Doc Update Requirements
 
 When updating documentation files:
