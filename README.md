@@ -101,8 +101,8 @@ Parameter requirements:
 
 - `relayOperatorAddress`: Relay runtime signer for `NodeStaking.unstake` and `NodeStaking.slashStaking`.
 - `slashReceiverAddress`: immutable slash receiver for both `NodeStaking` and `DelegatedStaking`. This address is set in constructors and cannot be changed after deployment.
-- `nodeMinStakeAmount`: initial minimum native CNX node stake.
-- `delegatedMinStakeAmount`: initial minimum native CNX delegation.
+- `nodeMinStakeAmount`: constructor argument for the initial minimum native CNX node stake. Crynux-on-base-sepolia MUST use `400e18`. Crynux-on-base MUST use `100000e18`.
+- `delegatedMinStakeAmount`: constructor argument for the initial minimum native CNX delegation. Crynux-on-base-sepolia MUST use `400e18`. Crynux-on-base MUST use `100000e18`.
 - `forceUnstakeDelay`: initial node force-unstake delay in seconds.
 
 Deploy the L2 node contracts with Hardhat Ignition:

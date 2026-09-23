@@ -1,0 +1,26 @@
+{
+  "name": "Robinhood Chain Testnet",
+  "chainId": 46630,
+  "parentChainId": 11155111,
+  "rpcUrl": "https://rpc.testnet.chain.robinhood.com",
+  "ethBridge": {
+    "rollup": "0xdc5F8E399DBd8a9F5F87AeC4C23Beb12431b386D",
+    "bridge": "0x96295BDad104eaD97cC08797b3dC68efF59CcF30",
+    "inbox": "0xF2939afA86F6f933A3CE17fCAB007907B6b0B7a4",
+    "sequencerInbox": "0xA0D9dB3DC9791D54b5183C1C1866eFe1eCA7D414",
+    "outbox": "0x8D180Caf588f3Da027BEf1F42a106Da93F90b166"
+  },
+  "tokenBridge": {
+    "parentGatewayRouter": "0xF6F11aAEE80875776C264d93B37B34cE437382D1",
+    "parentErc20Gateway": "0x52C2976cbDEf48BcC51d07d3c523769F76ECBd09",
+    "parentCustomGateway": "0xFB4aa8024F70B00121723A9C923BaD0Dd2dFaf8F",
+    "parentWethGateway": "0x8f8A6799F2b1978c6586318543c73D8Fb12f218f",
+    "parentWeth": "0x7b79995e5f793A07Bc00c21412e50Ecae098E7f9",
+    "childGatewayRouter": "0x77bF00A6A90c600f214b34BAFBB7918c0cF113A8",
+    "childErc20Gateway": "0x8689aFB9086734e12beA6b5DF541a1da252Ea32a",
+    "childCustomGateway": "0xE4EE9C15e2cA44136796342e31b67d953E67a70b",
+    "childWethGateway": "0x5A8F55202A625D12FFCb76F857FE4563bC8Ce413",
+    "childWeth": "0x7943e237c7F95DA44E0301572D358911207852Fa",
+    "childMultiCall": "0xa432504b6F04Cafe775b09D8AA92e8dbe41Ec7a8"
+  }
+}

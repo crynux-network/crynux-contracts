@@ -1,0 +1,98 @@
+name: crynux-on-rh-testnet-public
+
+services:
+  rh-testnet-init-data-volumes:
+    image: alpine:latest
+    restart: "no"
+    command:
+      - sh
+      - -lc
+      - chown -R 1000:1000 /das-data /nitro-data
+    volumes:
+      - type: volume
+        source: rh-testnet-das-data
+        target: /das-data
+        volume:
+          nocopy: true
+      - type: volume
+        source: rh-testnet-nitro-data
+        target: /nitro-data
+        volume:
+          nocopy: true
+
+  rh-testnet-das:
+    image: offchainlabs/nitro-node:v3.10.1-d7f07be
+    container_name: crynux-on-rh-testnet-das
+    restart: unless-stopped
+    depends_on:
+      rh-testnet-init-data-volumes:
+        condition: service_completed_successfully
+    ports:
+      - "9876:8545"
+      - "9877:8546"
+    volumes:
+      - ../keys:/home/user/data/keys:ro
+      - type: volume
+        source: rh-testnet-das-data
+        target: /home/user/data/das-data
+        volume:
+          nocopy: true
+      - ../daserver.json:/home/user/data/daserver.json:ro
+    entrypoint:
+      - anytrustserver
+    command:
+      - --conf.file
+      - /home/user/data/daserver.json
+    environment:
+      GOMEMLIMIT: 4GiB
+
+  rh-testnet-sequencer-redis:
+    image: redis:7-alpine
+    container_name: crynux-on-rh-testnet-sequencer-redis
+    restart: unless-stopped
+    command:
+      - sh
+      - -lc
+      - redis-server --appendonly yes --port 6488 --requirepass "<rh-testnet-redis-password>"
+    ports:
+      - "6488:6488"
+    volumes:
+      - rh-testnet-redis-data:/data
+    networks:
+      default:
+        aliases:
+          - sequencer-redis
+
+  rh-testnet-public-rpc-sequencer:
+    image: offchainlabs/nitro-node:v3.10.1-d7f07be
+    container_name: crynux-on-rh-testnet-public-node
+    restart: unless-stopped
+    stop_grace_period: 30m
+    depends_on:
+      rh-testnet-init-data-volumes:
+        condition: service_completed_successfully
+      rh-testnet-das:
+        condition: service_started
+      rh-testnet-sequencer-redis:
+        condition: service_started
+    ports:
+      - "8449:8449"
+    volumes:
+      - type: volume
+        source: rh-testnet-nitro-data
+        target: /home/user/.arbitrum
+        volume:
+          nocopy: true
+      - ./nitro-node.public.json:/home/user/.arbitrum/nitro-node.json:ro
+    entrypoint:
+      - nitro
+    command:
+      - --conf.file
+      - /home/user/.arbitrum/nitro-node.json
+    environment:
+      GOMEMLIMIT: 4GiB
+
+volumes:
+  rh-testnet-das-data:
+  rh-testnet-nitro-data:
+  rh-testnet-redis-data:

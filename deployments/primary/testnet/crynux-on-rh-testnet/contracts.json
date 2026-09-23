@@ -1,0 +1,22 @@
+{
+  "coreContracts": {
+    "rollup": "0x918b90D5D6fa5279c7C590101f0FAF71f4227e02",
+    "inbox": "0x04FDdd1Ac049692664F76C92d42Cd9afa4A563cD",
+    "nativeToken": "0xaF550673BfA3976AD39B4b4e61fE910d707dEcb0",
+    "outbox": "0x652D0521504D1F9ad02b79a4C388013d26478c4C",
+    "rollupEventInbox": "0x12ad79c0d5Dba2F258dF6c3B2C381963C6d83010",
+    "challengeManager": "0x69Ce6AdEB6783f72850cD94a9648c382bc05c0F5",
+    "adminProxy": "0x6b8973FFAa660830AED2D40E4e319609E5ddb24C",
+    "sequencerInbox": "0xc042CCCCd943722034744Dee0f9805cEf5e16E50",
+    "bridge": "0xAE7609f440F176515ce4dc78a2660Bca413c1D6C",
+    "upgradeExecutor": "0x891e283312d2b9cFD5a41384d737652A40b1fb85",
+    "validatorWalletCreator": "0xB7FE37712e46F28C8f22Ec4bAA33A09fb8B52BD0",
+    "deployedAtBlockNumber": 121672565
+  },
+  "nodeContracts": {
+    "benefitAddress": "0xd2EA1749399B1d9D12B03B5443F3B9Bd059DFfDE",
+    "delegatedStaking": "0x19d8A7584830fbbB163E25e5691dc84c58467C2f",
+    "nodeStaking": "0xFc80e019d00f0d06CbebdE648990A89c5a25B425",
+    "deployedAtBlockNumber": 18
+  }
+}

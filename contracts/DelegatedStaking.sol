@@ -49,15 +49,20 @@ contract DelegatedStaking is Ownable, ReentrancyGuard {
     mapping(address => uint) private nodeStakeAmount;
     mapping(address => uint) private delegatorStakeAmount;
 
-    uint private minStakeAmount = 400 * 10 ** 18;
+    uint private minStakeAmount;
 
     address private adminAddress;
     address public immutable slashReceiver;
     IStakeObserver private observer;
 
-    constructor(address slashReceiverAddress) Ownable(msg.sender) {
+    constructor(
+        address slashReceiverAddress,
+        uint256 minStakeAmount_
+    ) Ownable(msg.sender) {
         require(slashReceiverAddress != address(0), "slash receiver is zero");
+        require(minStakeAmount_ > 0, "minimum stake amount is 0");
         slashReceiver = slashReceiverAddress;
+        minStakeAmount = minStakeAmount_;
     }
 
     function renounceOwnership() public view override onlyOwner {

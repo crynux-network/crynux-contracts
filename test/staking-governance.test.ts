@@ -23,17 +23,17 @@ async function deployContracts() {
     const nodeStaking = await ethers.deployContract("NodeStaking", [
         await benefitAddress.getAddress(),
         slashReceiver.address,
+        1n,
     ]);
     const delegatedStaking = await ethers.deployContract("DelegatedStaking", [
         slashReceiver.address,
+        1n,
     ]);
     const observer = await ethers.deployContract("MockStakeObserver");
 
     await nodeStaking.setAdminAddress(relayAdmin.address);
-    await nodeStaking.setMinStakeAmount(1);
     await nodeStaking.setForceUnstakeDelay(1);
     await delegatedStaking.setAdminAddress(relayAdmin.address);
-    await delegatedStaking.setMinStakeAmount(1);
 
     return {
         ethers,

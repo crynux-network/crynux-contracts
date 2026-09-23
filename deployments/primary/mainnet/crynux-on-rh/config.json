@@ -1,0 +1,34 @@
+{
+  "chainId": 18896215,
+  "name": "Crynux on RH",
+  "rpcUrl": "https://json-rpc.rh.crynux.io",
+  "minL2BaseFee": 700000000,
+  "batchPosterAddress": "0x10524815579F5F016D72926157F17237E1dfA17b",
+  "validatorAddress": "0xccc4e37083b8cf0Ad091300CE9187Fe0B63633AB",
+  "dacKeyset": {
+    "assumed-honest": 1,
+    "backends": [
+      {
+        "url": "https://rpc.das.rh.crynux.io",
+        "pubkey": "YAk8Uyl0tG1b8kvajyDAmlHiYCkOmJtHAOi385XO4KYk+IBVZPzil5aqTa8Q/S4GfxRDvk//LcX3JBXTOaDWhowvw02kB7xzrMRXMaKs/1PchXia6qP/oPqVdf2Wm5tv8QLIXxGxU6C9UAlPQbMOhluLX+gFIOvt4GrZvSzkAH1gue5Y5gGPXP3vYG3K854goQgWdcJhXJN5d3PsSoMzVHLzxh7NVgmxVuG2HmVWUYM/zk1ubin9Ro1LeT4T3wa61QIofLPr2FXd1XEuMOoVdiPX+jckUwvARR5l+BZHUXcay38am3JH7n8Cu5ZHxfTAYxXL7bid+BEPNjmAZjpLr4sfqfqGwd0umBfUkGwuGYaiy7Z1cdoG6LQTExbiTAV+cQ=="
+      }
+    ]
+  },
+  "dacRestUrls": [
+    "https://rest.das.rh.crynux.io"
+  ],
+  "generatedDacKeyset": {
+    "keyset": "0x00000000000000010000000000000001012160093c532974b46d5bf24bda8f20c09a51e260290e989b4700e8b7f395cee0a624f8805564fce29796aa4daf10fd2e067f1443be4fff2dc5f72415d339a0d6868c2fc34da407bc73acc45731a2acff53dc85789aeaa3ffa0fa9575fd969b9b6ff102c85f11b153a0bd50094f41b30e865b8b5fe80520ebede06ad9bd2ce4007d60b9ee58e6018f5cfdef606dcaf39e20a1081675c2615c93797773ec4a83335472f3c61ecd5609b156e1b61e655651833fce4d6e6e29fd468d4b793e13df06bad502287cb3ebd855ddd5712e30ea157623d7fa3724530bc0451e65f8164751771acb7f1a9b7247ee7f02bb9647c5f4c06315cbedb89df8110f363980663a4baf8b1fa9fa86c1dd2e9817d4906c2e1986a2cbb67571da06e8b4131316e24c057e71",
+    "keysetHash": "0x2da73cf75cbe6c1e1e8a6f910869f60f1574301e064a2d5cbcb802bb315fe00b"
+  },
+  "production": {
+    "publicSequencerUrl": "https://json-rpc.rh.crynux.io"
+  },
+  "crynux-contracts-params": {
+    "relayOperatorAddress": "0xA81a1E5311930A506ABE7c520944F6192Cce36d7",
+    "slashReceiverAddress": "0xF1740ef3C6830Bd02CBfA76de83549F6825cd0Ce",
+    "nodeMinStakeAmount": "100000000000000000000000",
+    "delegatedMinStakeAmount": "100000000000000000000000",
+    "forceUnstakeDelay": 1800
+  }
+}

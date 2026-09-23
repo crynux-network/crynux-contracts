@@ -22,19 +22,11 @@ When updating documentation files:
 4. Do NOT simply create a new top-level section and place all new content there
 5. Only create a new section if the topic is truly distinct from all existing content
 
-Write documentation as a specification.
+Use specification language only in documents that define project requirements or technical architecture.
 
-Documentation MUST state clear, final decisions and requirements.
+Requirement and architecture documents MUST state clear, final, testable decisions. They MUST NOT include recommendations, alternatives, speculation, uncertainty, or future-facing placeholders. Use `MUST`, `MUST NOT`, `SHALL`, and `SHOULD` only when expressing an actual requirement, and use `SHOULD` only when that requirement level is intended.
 
-Documentation MUST NOT include:
-- Recommendations or advice.
-- Options or alternatives.
-- Speculation or uncertainty.
-- Future-facing placeholders.
-
-Documentation MUST use definitive language that can be implemented and tested:
-- Requirement keywords: MUST, MUST NOT, SHALL, SHOULD. Use SHOULD only when a requirement level is intended.
-- Exact behavior, constraints, and interfaces.
+Operational runbooks, deployment guides, and descriptive documents MUST describe current behavior and exact procedures in plain descriptive or imperative language. They MUST NOT use requirement keywords merely to describe an existing implementation, explain a command, or state a current configuration value.
 
 ## Chat Content Isolation
 

@@ -120,7 +120,7 @@ Every new constructor parameter, stored address, setter, or management entry poi
 
 ### `NodeStaking.minStakeAmount`
 
-- Initialization: contract default `400e18`, then explicit deployment parameter.
+- Initialization: constructor argument `minStakeAmount_`.
 - Modification: `setMinStakeAmount(uint256)` by Owner.
 - Validation: MUST be greater than zero.
 - Event: `MinStakeAmountUpdated(oldAmount,newAmount)`.
@@ -148,7 +148,7 @@ Every new constructor parameter, stored address, setter, or management entry poi
 
 ### `DelegatedStaking.minStakeAmount`
 
-- Initialization: contract default `400e18`, then explicit deployment parameter.
+- Initialization: constructor argument `minStakeAmount_`.
 - Modification: `setMinStakeAmount(uint256)` by Owner.
 - Validation: MUST be greater than zero.
 - Event: `MinStakeAmountUpdated(oldAmount,newAmount)`.

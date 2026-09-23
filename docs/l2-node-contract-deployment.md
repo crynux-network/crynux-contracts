@@ -12,9 +12,9 @@ The active non-token Relay integration contracts MUST be:
 | `NodeStaking.sol` | Store native CNX operator stake and execute Relay-authorized unstake and slash |
 | `DelegatedStaking.sol` | Store native CNX delegated stake and execute Relay-authorized delegated slash |
 
-`NodeStaking` MUST receive `BenefitAddress` and `slashReceiver` in its constructor. Both bindings MUST remain fixed after deployment.
+`NodeStaking` MUST receive `BenefitAddress`, `slashReceiver`, and `minStakeAmount_` in its constructor. `BenefitAddress` and `slashReceiver` MUST remain fixed after deployment. `minStakeAmount_` initializes the R3 minimum stake and MAY later change through `setMinStakeAmount`.
 
-`DelegatedStaking` MUST receive `slashReceiver` in its constructor. The binding MUST remain fixed after deployment.
+`DelegatedStaking` MUST receive `slashReceiver` and `minStakeAmount_` in its constructor. `slashReceiver` MUST remain fixed after deployment. `minStakeAmount_` initializes the R3 minimum stake and MAY later change through `setMinStakeAmount`.
 
 `NodeStaking` MUST read `BenefitAddress.getBenefitAddress(address)` before returning native CNX. It MUST send the return to the configured benefit address or to the node address when no benefit address is configured.
 
@@ -40,15 +40,17 @@ The deployment parameter file MUST use this shape:
 
 `relayOperatorAddress` and `slashReceiverAddress` MUST be nonzero.
 
-`nodeMinStakeAmount`, `delegatedMinStakeAmount`, and `forceUnstakeDelay` MUST be positive. Their defaults MUST be `400e18`, `400e18`, and `1800` seconds.
+`nodeMinStakeAmount`, `delegatedMinStakeAmount`, and `forceUnstakeDelay` MUST be positive. Crynux on Base testnet and Crynux on RH Testnet configs MUST use `400e18` for both minimum stake amounts. Crynux on Base and Crynux on RH mainnet configs MUST use `100000e18` for both minimum stake amounts. Every Crynux on RH environment MUST use the same-environment Crynux on Base Relay operator, fixed slash receiver, and `1800`-second force-unstake delay. The Ignition module default for both minimum stake amounts MUST be `400e18`. The Ignition module default for `forceUnstakeDelay` MUST be `1800` seconds.
+
+Crynux on RH MUST use chain ID `18896215`. Crynux on RH Testnet MUST use chain ID `188962150`. Node contracts on these chains MUST use native CNX and MUST follow the same deployment order, runtime authority, observer configuration, and governance handoff defined in this document.
 
 The module MUST deploy contracts in this order:
 
 1. Deploy `BenefitAddress`.
-2. Deploy `DelegatedStaking` with the fixed slash receiver.
-3. Deploy `NodeStaking` with the fixed BenefitAddress and slash receiver.
+2. Deploy `DelegatedStaking` with the fixed slash receiver and `delegatedMinStakeAmount`.
+3. Deploy `NodeStaking` with the fixed BenefitAddress, slash receiver, and `nodeMinStakeAmount`.
 4. Set both `adminAddress` values to `relayOperatorAddress`.
-5. Set both minimum stake amounts and the force-unstake delay.
+5. Set the force-unstake delay on `NodeStaking`.
 
 The deployer MUST be the initial Owner of both staking contracts. Both observers MUST initially be zero because `CouncilRegistry` requires the staking addresses in its constructor. Until the corresponding observer is set to a nonzero contract, every operation that changes a stake amount MUST revert. `NodeStaking.tryUnstake` MUST also revert because it starts the later Relay or force-unstake flow.
 

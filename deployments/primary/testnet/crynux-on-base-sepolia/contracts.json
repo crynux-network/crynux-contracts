@@ -14,11 +14,9 @@
     "deployedAtBlockNumber": 42255144
   },
   "nodeContracts": {
-    "credits": "0x71399bBc8604C4EB75260BEf01c2A8deD735C795",
-    "benefitAddress": "0xFc80e019d00f0d06CbebdE648990A89c5a25B425",
-    "delegatedStaking": "0x8f31Ff3Ac3923442eAbA765e3422848d25FA2496",
-    "nodeStaking": "0xAE0DDF6cf595F1EACfA76e35D985357E69795712",
-    "parameterController": "0x7c8861a639B712D486eFB2C944419F7531700db0",
-    "deployedAtBlockNumber": 28
+    "benefitAddress": "0x26BA403a33E715B76FBCb144C99b6d1A2fD04510",
+    "delegatedStaking": "0xd2b71aBEC4a5BCE7794dd49489D4801b29465978",
+    "nodeStaking": "0xa3b30C5B021cD17124A5E535451D8EA992c22e8b",
+    "deployedAtBlockNumber": 127
   }
 }

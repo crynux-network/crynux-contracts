@@ -20,13 +20,11 @@
     "keysetHash": ""
   },
   "production": {
-    "redisPassword": "change-it",
-    "publicSequencerUrl": "https://json-rpc.base-sepolia.crynux.io",
-    "privateRedisHost": "<public-rpc-sequencer-host>"
+    "publicSequencerUrl": "https://json-rpc.base-sepolia.crynux.io"
   },
   "crynux-contracts-params": {
-    "relayOperatorAddress": "",
-    "slashReceiverAddress": "",
+    "relayOperatorAddress": "0x1FEaC5A57Ec8db4cDF71dE51539aD3AE31210102",
+    "slashReceiverAddress": "0xF1740ef3C6830Bd02CBfA76de83549F6825cd0Ce",
     "nodeMinStakeAmount": "400000000000000000000",
     "delegatedMinStakeAmount": "400000000000000000000",
     "forceUnstakeDelay": 1800

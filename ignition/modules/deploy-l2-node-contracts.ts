@@ -16,10 +16,12 @@ export default buildModule("DeployNodeContracts", (m) => {
     const benefitAddress = m.contract("BenefitAddress");
     const delegatedStaking = m.contract("DelegatedStaking", [
         slashReceiverAddress,
+        delegatedMinStakeAmount,
     ]);
     const nodeStaking = m.contract("NodeStaking", [
         benefitAddress,
         slashReceiverAddress,
+        nodeMinStakeAmount,
     ]);
 
     m.call(nodeStaking, "setAdminAddress", [relayOperatorAddress], {
@@ -27,12 +29,6 @@ export default buildModule("DeployNodeContracts", (m) => {
     });
     m.call(delegatedStaking, "setAdminAddress", [relayOperatorAddress], {
         id: "SetDelegatedStakingAdminAddress",
-    });
-    m.call(nodeStaking, "setMinStakeAmount", [nodeMinStakeAmount], {
-        id: "SetNodeStakingMinStakeAmount",
-    });
-    m.call(delegatedStaking, "setMinStakeAmount", [delegatedMinStakeAmount], {
-        id: "SetDelegatedStakingMinStakeAmount",
     });
     m.call(nodeStaking, "setForceUnstakeDelay", [forceUnstakeDelay], {
         id: "SetNodeStakingForceUnstakeDelay",

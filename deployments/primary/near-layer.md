@@ -1,8 +1,14 @@
-# Primary Near Layer
+# Primary NEAR Branch
 
 This workflow bridges Primary CNX from Ethereum to NEAR through NEAR Omni Bridge and records the NEAR NEP-141 bridged CNX token.
 
 Aurora virtual chain deposit, token registration, native gas token configuration, and Crynux-on-Near chain operations are outside this workflow.
+
+## Bridge Boundary
+
+Ethereum MUST remain the canonical CNX supply chain and the only chain in this branch that deploys the Primary emission contract. NEAR MUST NOT deploy another Primary emission contract.
+
+Ethereum ↔ NEAR MUST use NEAR Omni Bridge. CNX on NEAR MUST be the NEP-141 representation of canonical Ethereum CNX created and supplied through that bridge.
 
 ## Deployment Flow
 

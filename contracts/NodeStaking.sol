@@ -11,7 +11,7 @@ contract NodeStaking is Ownable, ReentrancyGuard {
 
     error OwnershipRenouncementDisabled();
 
-    uint256 private minStakeAmount = 400 * 10 ** 18;
+    uint256 private minStakeAmount;
     uint256 private forceUnstakeDelay = 1800;
 
     enum StakingStatus {
@@ -47,12 +47,15 @@ contract NodeStaking is Ownable, ReentrancyGuard {
 
     constructor(
         address benefitAddressContract,
-        address slashReceiverAddress
+        address slashReceiverAddress,
+        uint256 minStakeAmount_
     ) Ownable(msg.sender) {
         require(benefitAddressContract != address(0), "benefit address is zero");
         require(slashReceiverAddress != address(0), "slash receiver is zero");
+        require(minStakeAmount_ > 0, "minimum stake amount is 0");
         ba = BenefitAddress(benefitAddressContract);
         slashReceiver = slashReceiverAddress;
+        minStakeAmount = minStakeAmount_;
     }
 
     function renounceOwnership() public view override onlyOwner {

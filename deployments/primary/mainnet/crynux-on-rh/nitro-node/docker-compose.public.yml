@@ -1,0 +1,98 @@
+name: crynux-on-rh-public
+
+services:
+  rh-mainnet-init-data-volumes:
+    image: alpine:latest
+    restart: "no"
+    command:
+      - sh
+      - -lc
+      - chown -R 1000:1000 /das-data /nitro-data
+    volumes:
+      - type: volume
+        source: rh-mainnet-das-data
+        target: /das-data
+        volume:
+          nocopy: true
+      - type: volume
+        source: rh-mainnet-nitro-data
+        target: /nitro-data
+        volume:
+          nocopy: true
+
+  rh-mainnet-das:
+    image: offchainlabs/nitro-node:v3.10.1-d7f07be
+    container_name: crynux-on-rh-das
+    restart: unless-stopped
+    depends_on:
+      rh-mainnet-init-data-volumes:
+        condition: service_completed_successfully
+    ports:
+      - "9876:8545"
+      - "9877:8546"
+    volumes:
+      - ../keys:/home/user/data/keys:ro
+      - type: volume
+        source: rh-mainnet-das-data
+        target: /home/user/data/das-data
+        volume:
+          nocopy: true
+      - ../daserver.json:/home/user/data/daserver.json:ro
+    entrypoint:
+      - anytrustserver
+    command:
+      - --conf.file
+      - /home/user/data/daserver.json
+    environment:
+      GOMEMLIMIT: 4GiB
+
+  rh-mainnet-sequencer-redis:
+    image: redis:7-alpine
+    container_name: crynux-on-rh-sequencer-redis
+    restart: unless-stopped
+    command:
+      - sh
+      - -lc
+      - redis-server --appendonly yes --port 6488 --requirepass "<rh-mainnet-redis-password>"
+    ports:
+      - "6488:6488"
+    volumes:
+      - rh-mainnet-redis-data:/data
+    networks:
+      default:
+        aliases:
+          - sequencer-redis
+
+  rh-mainnet-public-rpc-sequencer:
+    image: offchainlabs/nitro-node:v3.10.1-d7f07be
+    container_name: crynux-on-rh-public-node
+    restart: unless-stopped
+    stop_grace_period: 30m
+    depends_on:
+      rh-mainnet-init-data-volumes:
+        condition: service_completed_successfully
+      rh-mainnet-das:
+        condition: service_started
+      rh-mainnet-sequencer-redis:
+        condition: service_started
+    ports:
+      - "127.0.0.1:8449:8449"
+    volumes:
+      - type: volume
+        source: rh-mainnet-nitro-data
+        target: /home/user/.arbitrum
+        volume:
+          nocopy: true
+      - ./nitro-node.public.json:/home/user/.arbitrum/nitro-node.json:ro
+    entrypoint:
+      - nitro
+    command:
+      - --conf.file
+      - /home/user/.arbitrum/nitro-node.json
+    environment:
+      GOMEMLIMIT: 4GiB
+
+volumes:
+  rh-mainnet-das-data:
+  rh-mainnet-nitro-data:
+  rh-mainnet-redis-data:

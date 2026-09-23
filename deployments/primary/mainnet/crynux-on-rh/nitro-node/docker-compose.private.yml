@@ -1,0 +1,42 @@
+name: crynux-on-rh-private
+
+services:
+  rh-mainnet-init-nitro-volume:
+    image: alpine:latest
+    restart: "no"
+    command:
+      - sh
+      - -lc
+      - chown -R 1000:1000 /nitro-data
+    volumes:
+      - type: volume
+        source: rh-mainnet-private-nitro-data
+        target: /nitro-data
+        volume:
+          nocopy: true
+
+  rh-mainnet-private-operators:
+    image: offchainlabs/nitro-node:v3.10.1-d7f07be
+    container_name: crynux-on-rh-private-operators
+    restart: unless-stopped
+    stop_grace_period: 30m
+    depends_on:
+      rh-mainnet-init-nitro-volume:
+        condition: service_completed_successfully
+    volumes:
+      - type: volume
+        source: rh-mainnet-private-nitro-data
+        target: /home/user/.arbitrum
+        volume:
+          nocopy: true
+      - ./nitro-node.private.json:/home/user/.arbitrum/nitro-node.json:ro
+    entrypoint:
+      - nitro
+    command:
+      - --conf.file
+      - /home/user/.arbitrum/nitro-node.json
+    environment:
+      GOMEMLIMIT: 4GiB
+
+volumes:
+  rh-mainnet-private-nitro-data:

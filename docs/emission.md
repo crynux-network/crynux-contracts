@@ -27,26 +27,36 @@ The global token economy MUST be defined by `Primary L1` real emission accountin
 - Mirror inventory MUST NOT be treated as extra token supply.
 - Only `Primary L1` MUST send DAO emission to `DAO Treasury`.
 
-## L1 and L2 Topology Model
+## Chain Topology Model
 
-The Crynux production topology MUST support multiple L1 environments. Each L1 environment MUST have exactly one Crynux-operated L2 network attached to it. Node runtime contracts execute on L2, and CNX is the L2 native gas and settlement token.
+The Crynux production topology MUST support direct L1-to-Crynux branches and multihop L1-to-parent-L2-to-Crynux-L3 branches. Node runtime contracts execute on the final Crynux-operated child chain, and CNX is that child chain's native gas and settlement token.
 
-L1 MUST deploy both a CNX token contract and an emission contract. When L1 is an EVM chain, the token and emission implementation MUST be the ERC-20 based version.
+The Primary topology MUST use Ethereum as the canonical CNX ERC-20 supply chain and the only chain with the Primary emission contract. Its supported multihop branches MUST include:
 
-L2 MUST NOT deploy a separate token contract. L2 native token MUST always be CNX.
+- Ethereum ↔ Base through the Base canonical bridge, followed by Base ↔ Crynux on Base through the Crynux on Base Orbit bridge.
+- Ethereum ↔ Robinhood Chain through the Arbitrum canonical bridge instance deployed specifically for Robinhood Chain, followed by Robinhood Chain ↔ Crynux on RH through the new Crynux on RH Orbit bridge.
 
-Whether an emission contract is deployed on L2 depends on whether native CNX bridging is supported from L1 to L2:
+The Ethereum ↔ Robinhood Chain bridge MUST NOT use Arbitrum One bridge addresses. It is an Arbitrum canonical bridge deployment for Robinhood Chain and MUST NOT be treated as a Robinhood-specific bridge protocol. The Robinhood Chain ↔ Crynux on RH bridge is a separate L3 Orbit bridge and MUST NOT reuse the Ethereum ↔ Robinhood Chain bridge contracts.
+
+Every non-canonical chain in these branches MUST NOT deploy an emission contract. Parent L2 chains hold canonical bridged ERC-20 CNX. Final Crynux child chains MUST NOT deploy a separate token contract and MUST use CNX as the native token.
+
+For any other integrated environment, its root chain MUST deploy both a CNX token contract and an emission contract. When that root chain is an EVM chain, the token and emission implementation MUST be the ERC-20 based version.
+
+Whether an emission contract is deployed on a final Crynux child chain depends on whether native CNX bridging is supported from its parent chain:
 
 ### Native bridging supported
 
-If the selected L1-to-L2 stack natively supports bridging L1 CNX into L2 native CNX, emission MUST be deployed only on L1.
+If every bridge in the selected branch preserves canonical CNX and the final parent-to-child stack supports bridging parent-chain CNX into child-chain native CNX, emission MUST be deployed only on the branch's root chain.
 
-Because all L2 CNX in this model originates from L1, `Crynux Bridge` MUST actively execute L1-to-L2 CNX transfers to keep L2 relay inventory sufficiently funded for node withdrawals and user cross-chain withdrawals. This bridge synchronization MUST run continuously with emission progress and expected withdrawal demand while preserving L1+L2 total supply conservation.
+Because all downstream CNX in this model originates from the root chain, `Crynux Bridge` MUST actively execute each canonical bridge hop to keep final child-chain relay inventory sufficiently funded for node withdrawals and user cross-chain withdrawals. This bridge synchronization MUST run continuously with emission progress and expected withdrawal demand while preserving total supply across every location.
 
-In this native-bridge case, L1 and L2 token balances are one conserved pool across two locations:
+After all bridge messages settle, each bridged amount MUST be counted at exactly one location. Root-chain tokens locked by a canonical bridge MUST be excluded when the corresponding parent-chain representation is counted. Parent-chain tokens locked by an Orbit bridge MUST be excluded when the corresponding child-chain native CNX is counted.
 
 ```text
-Total CNX on L1 + Total CNX on L2 = CNX total supply
+Total root-chain CNX outside canonical bridge escrow
++ Total parent-chain bridged CNX outside Orbit bridge escrow
++ Total native CNX on all final Crynux child chains
+= CNX total supply
 ```
 
 ### Native bridging not supported
@@ -112,7 +122,7 @@ When first emission is executed:
 - `initCost` MUST be treated as already-spent DAO startup expense.
 - `initCost` MUST NOT be counted again as an extra token-supply increment.
 
-After first-environment activation (`Primary L1` + `Primary L2`), chain totals MUST follow the topology totals defined in `L1 and L2 Topology Model`.
+After first-environment activation, chain totals MUST follow the conservation rule defined in `Chain Topology Model`.
 
 The first emission accounting MUST include DAO startup expense handling, where `initCost` is treated as already spent and MUST NOT be counted again.
 

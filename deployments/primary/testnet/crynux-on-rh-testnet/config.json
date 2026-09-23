@@ -1,0 +1,34 @@
+{
+  "chainId": 188962150,
+  "name": "Crynux on RH Testnet",
+  "rpcUrl": "https://json-rpc.rh-testnet.crynux.io",
+  "minL2BaseFee": 700000000,
+  "batchPosterAddress": "0x0C293940279262F6fd5eD4Fb74A17e22DB735a1e",
+  "validatorAddress": "0x66E1AAf27DFFe9D64F8Bd560c6C1D3CB10eb7Cd8",
+  "dacKeyset": {
+    "assumed-honest": 1,
+    "backends": [
+      {
+        "url": "https://rpc.das.rh-testnet.crynux.io",
+        "pubkey": "YAGWy1uyN1+HjiGX1IFdH6UuF3sBSzpLISalac3u7chdws33KmuKMp3WO753LfcTCwA0nR9W0Xe39UygkyUnrv9vvyNpUi5VrqlY0E2/uC3uOeUK6TUmZug+TVfhE3mnEQp57FuTFq4y9YAYuSYmXHr2Fxict0igpb4RVT4MBfFt/hAP3W8ea4OMECVpShdzHhL1hlcr904/CdJtiF9+MeBk5RlMCEDakOFUqJB1mjIW2ODlMNY17Btc2+QJNYm17w9KqiW3ueJUsb5xvnJWWjrLbSSrHaDHII5R70Au5AKGnlarj1yRE1IijAY3gToYQgP1OlHy1MwzVMyhj9PKu0qHkOSgV6tAGqP+jKBdtJu6r3UaGb9tLz9H3XRgRb88oQ=="
+      }
+    ]
+  },
+  "dacRestUrls": [
+    "https://rest.das.rh-testnet.crynux.io"
+  ],
+  "generatedDacKeyset": {
+    "keyset": "0x000000000000000100000000000000010121600196cb5bb2375f878e2197d4815d1fa52e177b014b3a4b2126a569cdeeedc85dc2cdf72a6b8a329dd63bbe772df7130b00349d1f56d177b7f54ca0932527aeff6fbf2369522e55aea958d04dbfb82dee39e50ae9352666e83e4d57e11379a7110a79ec5b9316ae32f58018b926265c7af617189cb748a0a5be11553e0c05f16dfe100fdd6f1e6b838c1025694a17731e12f586572bf74e3f09d26d885f7e31e064e5194c0840da90e154a890759a3216d8e0e530d635ec1b5cdbe4093589b5ef0f4aaa25b7b9e254b1be71be72565a3acb6d24ab1da0c7208e51ef402ee402869e56ab8f5c911352228c0637813a184203f53a51f2d4cc3354cca18fd3cabb4a8790e4a057ab401aa3fe8ca05db49bbaaf751a19bf6d2f3f47dd746045bf3ca1",
+    "keysetHash": "0x37a4b8ca69b792fd615886077ef1a44901e36b7249ef28647cbcb78d5af34931"
+  },
+  "production": {
+    "publicSequencerUrl": "https://json-rpc.rh-testnet.crynux.io"
+  },
+  "crynux-contracts-params": {
+    "relayOperatorAddress": "0x1FEaC5A57Ec8db4cDF71dE51539aD3AE31210102",
+    "slashReceiverAddress": "0xF1740ef3C6830Bd02CBfA76de83549F6825cd0Ce",
+    "nodeMinStakeAmount": "400000000000000000000",
+    "delegatedMinStakeAmount": "400000000000000000000",
+    "forceUnstakeDelay": 1800
+  }
+}

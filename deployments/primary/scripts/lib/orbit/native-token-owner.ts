@@ -1,6 +1,6 @@
 import { encodeFunctionData, type Address } from 'viem';
 import type { PrivateKeyAccount } from 'viem/accounts';
-import { orbitChain, orbitChainPublicClient } from './common.js';
+import { orbitChain, orbitChainPublicClient } from './runtime.js';
 
 export const arbOwnerAddress: Address = '0x0000000000000000000000000000000000000070';
 export const arbOwnerPublicAddress: Address = '0x000000000000000000000000000000000000006b';

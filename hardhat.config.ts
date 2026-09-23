@@ -20,6 +20,10 @@ const ethereumRpcUrl = process.env.ETHEREUM_RPC_URL ?? "https://eth-mainnet.g.al
 const ethereumSepoliaRpcUrl = process.env.ETHEREUM_SEPOLIA_RPC_URL ?? "https://ethereum-sepolia-rpc.publicnode.com";
 const crynuxOnBaseSepoliaRpcUrl = process.env.CRYNUX_ON_BASE_SEPOLIA_RPC_URL ?? "https://json-rpc.base-sepolia.crynux.io";
 const crynuxOnBaseRpcUrl = process.env.CRYNUX_ON_BASE_RPC_URL ?? "https://json-rpc.base.crynux.io";
+const robinhoodRpcUrl = process.env.ROBINHOOD_RPC_URL ?? "https://rpc.mainnet.chain.robinhood.com";
+const robinhoodTestnetRpcUrl = process.env.ROBINHOOD_TESTNET_RPC_URL ?? "https://rpc.testnet.chain.robinhood.com";
+const crynuxOnRhRpcUrl = process.env.CRYNUX_ON_RH_RPC_URL ?? "https://json-rpc.rh.crynux.io";
+const crynuxOnRhTestnetRpcUrl = process.env.CRYNUX_ON_RH_TESTNET_RPC_URL ?? "https://json-rpc.rh-testnet.crynux.io";
 const ignitionRequiredConfirmations = Number(process.env.IGNITION_REQUIRED_CONFIRMATIONS ?? "1");
 
 export default defineConfig({
@@ -95,6 +99,34 @@ export default defineConfig({
             chainType: "generic",
             chainId: 188962142,
             url: crynuxOnBaseSepoliaRpcUrl,
+            accounts: [configVariable("TESTNET_DEPLOYER_PRIVATE_KEY")],
+        },
+        robinhood: {
+            type: "http",
+            chainType: "generic",
+            chainId: 4663,
+            url: robinhoodRpcUrl,
+            accounts: [configVariable("MAINNET_DEPLOYER_PRIVATE_KEY")],
+        },
+        robinhoodTestnet: {
+            type: "http",
+            chainType: "generic",
+            chainId: 46630,
+            url: robinhoodTestnetRpcUrl,
+            accounts: [configVariable("TESTNET_DEPLOYER_PRIVATE_KEY")],
+        },
+        crynuxOnRh: {
+            type: "http",
+            chainType: "generic",
+            chainId: 18896215,
+            url: crynuxOnRhRpcUrl,
+            accounts: [configVariable("MAINNET_DEPLOYER_PRIVATE_KEY")],
+        },
+        crynuxOnRhTestnet: {
+            type: "http",
+            chainType: "generic",
+            chainId: 188962150,
+            url: crynuxOnRhTestnetRpcUrl,
             accounts: [configVariable("TESTNET_DEPLOYER_PRIVATE_KEY")],
         },
     },

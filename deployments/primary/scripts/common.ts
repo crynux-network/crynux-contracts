@@ -7,7 +7,7 @@ import type { Address, Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 
 export type PrimaryDeploymentNetwork = 'testnet' | 'mainnet';
-export type PrimaryLayer = 'ethereum' | 'base' | 'crynux-on-base' | 'near';
+export type PrimaryLayer = 'ethereum' | 'base' | 'crynux-on-base' | 'robinhood' | 'crynux-on-rh' | 'near';
 
 type ParsedCli = {
   network: PrimaryDeploymentNetwork;
@@ -31,12 +31,16 @@ export const primaryRuntime = {
         ethereum: 'Ethereum Sepolia',
         base: 'Base Sepolia',
         crynuxOnBase: 'Crynux on Base Sepolia',
+        robinhood: 'Robinhood Chain Testnet',
+        crynuxOnRh: 'Crynux on RH Testnet',
         near: 'NEAR Testnet',
       }
     : {
         ethereum: 'Ethereum',
         base: 'Base',
         crynuxOnBase: 'Crynux on Base',
+        robinhood: 'Robinhood Chain',
+        crynuxOnRh: 'Crynux on RH',
         near: 'NEAR',
       },
   hardhatNetworks: parsedCli.network === 'testnet'
@@ -44,11 +48,15 @@ export const primaryRuntime = {
         ethereum: 'ethereumSepolia',
         base: 'baseSepolia',
         crynuxOnBase: 'crynuxOnBaseSepolia',
+        robinhood: 'robinhoodTestnet',
+        crynuxOnRh: 'crynuxOnRhTestnet',
       }
     : {
         ethereum: 'ethereum',
         base: 'base',
         crynuxOnBase: 'crynuxOnBase',
+        robinhood: 'robinhood',
+        crynuxOnRh: 'crynuxOnRh',
       },
 } as const;
 
@@ -106,12 +114,16 @@ export function getPrimaryLayerDir(layer: PrimaryLayer): string {
         ethereum: 'ethereum-sepolia',
         base: 'base-sepolia',
         'crynux-on-base': 'crynux-on-base-sepolia',
+        robinhood: 'robinhood-testnet',
+        'crynux-on-rh': 'crynux-on-rh-testnet',
         near: 'near',
       }[layer]
     : {
         ethereum: 'ethereum',
         base: 'base',
         'crynux-on-base': 'crynux-on-base',
+        robinhood: 'robinhood',
+        'crynux-on-rh': 'crynux-on-rh',
         near: 'near',
       }[layer];
 
@@ -164,8 +176,8 @@ export async function getPrimaryDeployerAccount() {
   return privateKeyToAccount(await getConfiguredDeployerPrivateKey());
 }
 
-export function assertAddress(value: string, name: string): Address {
-  if (!value.startsWith('0x') || value.length !== 42) {
+export function assertAddress(value: unknown, name: string): Address {
+  if (typeof value !== 'string' || !value.startsWith('0x') || value.length !== 42) {
     throw new Error(`${name} must be a deployed address.`);
   }
 
