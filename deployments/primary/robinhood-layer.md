@@ -67,14 +67,27 @@ npx tsx deployments/primary/scripts/robinhood/deposit-cnx-from-ethereum.ts <amou
 npx tsx deployments/primary/scripts/robinhood/deposit-eth-from-ethereum.ts <eth-amount> --network=<testnet|mainnet>
 ```
 
-4. Withdraw and claim CNX through the same Robinhood-specific canonical bridge instance:
+4. Deploy the Robinhood Chain `BenefitAddress` used to validate Relay withdrawal destinations:
+
+```powershell
+npx tsx deployments/primary/scripts/robinhood/deploy-benefit-address.ts --network=<testnet|mainnet>
+```
+
+The script MUST record `benefitAddress` and `benefitAddressDeployedAtBlockNumber` in:
+
+- `deployments/primary/testnet/robinhood-testnet/contracts.json` for testnet
+- `deployments/primary/mainnet/robinhood/contracts.json` for mainnet
+
+If `benefitAddress` is already recorded, the command MUST skip deployment.
+
+5. Withdraw and claim CNX through the same Robinhood-specific canonical bridge instance:
 
 ```powershell
 npx tsx deployments/primary/scripts/robinhood/withdraw-cnx-to-ethereum.ts <amount> [destinationAddress] --network=<testnet|mainnet>
 npx tsx deployments/primary/scripts/robinhood/claim-cnx-withdrawal.ts <withdrawalTxHash> --network=<testnet|mainnet>
 ```
 
-5. Redeem a failed retryable ticket:
+6. Redeem a failed retryable ticket:
 
 ```powershell
 npx tsx deployments/primary/scripts/robinhood/redeem-retryable.ts <parentTransactionHash> <retryableCreationId> [gasLimit] [maxFeePerGasGwei] [maxPriorityFeePerGasGwei] --network=<testnet|mainnet>
@@ -221,14 +234,26 @@ npx tsx deployments/primary/scripts/crynux-on-rh/deposit-rh-cnx-to-crynux.ts <am
 npx tsx deployments/primary/scripts/crynux-on-rh/deploy-crynux-contracts.ts --network=<testnet|mainnet>
 ```
 
-7. Withdraw and claim native CNX through the Crynux on RH Orbit bridge:
+7. Deploy `NoOpStakeObserver` (temporary empty observer so nodes can join the network before governance is deployed). If `noopStakeObserver` is already recorded in `contracts.json`, the script skips deployment:
+
+```powershell
+npx tsx deployments/primary/scripts/crynux-on-rh/deploy-noop-stake-observer.ts --network=<testnet|mainnet>
+```
+
+8. Point both staking contracts at the recorded `noopStakeObserver`. The deployer account MUST still be Owner of both contracts:
+
+```powershell
+npx tsx deployments/primary/scripts/crynux-on-rh/set-noop-staking-observers.ts --network=<testnet|mainnet>
+```
+
+9. Withdraw and claim native CNX through the Crynux on RH Orbit bridge:
 
 ```powershell
 npx tsx deployments/primary/scripts/crynux-on-rh/withdraw-crynux-to-rh.ts <amount> [destinationAddress] --network=<testnet|mainnet>
 npx tsx deployments/primary/scripts/crynux-on-rh/claim-crynux-withdrawal.ts <withdrawalTxHash> --network=<testnet|mainnet>
 ```
 
-8. Lock and unlock value-bearing child-to-parent withdrawals:
+10. Lock and unlock value-bearing child-to-parent withdrawals:
 
 ```powershell
 npx tsx deployments/primary/scripts/crynux-on-rh/add-native-token-owner.ts <ownerAddress> --network=<testnet|mainnet>

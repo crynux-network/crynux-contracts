@@ -30,7 +30,9 @@ export type RobinhoodConfig = Omit<ConfiguredArbitrumNetwork, 'isTestnet'> & {
 
 export type RobinhoodContracts = {
   robinhoodCrynuxTokenAddress: Address | '';
+  benefitAddress: Address | '';
   resolvedAtBlockNumber: number;
+  benefitAddressDeployedAtBlockNumber: number;
 };
 
 const configFile = getPrimaryLayerFile('robinhood', 'config.json');
@@ -181,4 +183,4 @@ export async function getCrynuxTokenBindingForDeposit(): Promise<{
   };
 }
 
-export { getConfiguredDeployerPrivateKey, getPrimaryDeployerAccount };
+export { getConfiguredDeployerPrivateKey, getPrimaryDeployerAccount, assertAddress };

@@ -54,7 +54,7 @@ The module MUST deploy contracts in this order:
 
 The deployer MUST be the initial Owner of both staking contracts. Both observers MUST initially be zero because `CouncilRegistry` requires the staking addresses in its constructor. Until the corresponding observer is set to a nonzero contract, every operation that changes a stake amount MUST revert. `NodeStaking.tryUnstake` MUST also revert because it starts the later Relay or force-unstake flow.
 
-New deployments MUST use a deployment ID that does not reuse the historical Credits and ParameterController journal. New deployment output MUST contain only `benefitAddress`, `nodeStaking`, `delegatedStaking`, and the deployment block number. Existing `contracts.json` records containing Credits and ParameterController MUST remain unchanged as historical records.
+New deployments MUST use a deployment ID that does not reuse the historical Credits and ParameterController journal. New deployment output from `deploy-crynux-contracts` MUST contain only `benefitAddress`, `nodeStaking`, `delegatedStaking`, and the deployment block number. Existing `contracts.json` records containing Credits and ParameterController MUST remain unchanged as historical records. On chains that later deploy `NoOpStakeObserver`, that address MAY be appended as `noopStakeObserver` without changing the other recorded fields.
 
 ## Runtime Authority
 
@@ -67,6 +67,10 @@ New deployments MUST use a deployment ID that does not reuse the historical Cred
 The Relay signer MUST NOT select a refund receiver or slash receiver. Node refunds MUST follow the fixed BenefitAddress lookup. Slash funds MUST use the constructor-fixed receiver.
 
 Owner MUST be authorized only for the staking setters listed in `owner-controlled-parameters.md` and standard ownership transfer. The staking contracts MUST NOT expose arbitrary withdrawal, rescue, external-call, implementation-replacement, or proxy-upgrade methods.
+
+## Temporary Observer Before Governance
+
+On a chain where `CouncilRegistry` is not yet deployed, the current staking Owner MAY set both observers to a deployed `NoOpStakeObserver` so nodes can join the network. `NoOpStakeObserver` MUST implement `IStakeObserver.onStakeChanged` with an empty body. The Owner MAY later replace that address with `CouncilRegistry` through `setObserver`.
 
 ## Governance Configuration
 

@@ -1,4 +1,6 @@
 {
   "robinhoodCrynuxTokenAddress": "0xaF550673BfA3976AD39B4b4e61fE910d707dEcb0",
-  "resolvedAtBlockNumber": 121154769
+  "benefitAddress": "",
+  "resolvedAtBlockNumber": 121154769,
+  "benefitAddressDeployedAtBlockNumber": 0
 }

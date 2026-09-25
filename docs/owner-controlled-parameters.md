@@ -94,7 +94,7 @@ Every new constructor parameter, stored address, setter, or management entry poi
 - Validation: zero MUST be accepted to pause stake-amount changes; a nonzero address MUST contain contract code and MUST be called as `IStakeObserver`.
 - Event: `ObserverUpdated(oldObserver,newObserver)`.
 - Call path: changed node stake storage, required observer notification, then native CNX refund or slash transfer. A zero observer MUST revert and roll back the stake change.
-- Business reason: `CouncilRegistry` requires node voting-balance updates and is deployed after staking addresses exist.
+- Business reason: `CouncilRegistry` requires node voting-balance updates and is deployed after staking addresses exist. Until then, Owner MAY set a `NoOpStakeObserver` so nodes can join the network; Owner MAY later replace it with `CouncilRegistry`.
 - Fund effect: the callback sends no funds and does not determine a receiver or amount.
 - Owner compromise: the attacker can pause stake-amount changes by clearing the observer or install an observer that reverts staking operations. The observer cannot receive staking funds through this binding.
 
@@ -102,7 +102,7 @@ Every new constructor parameter, stored address, setter, or management entry poi
 
 - Initialization, modification, validation, and event: identical to `NodeStaking.observer`.
 - Call path: changed delegator storage, required observer notification for each affected delegator, then native CNX refund or batch slash transfer. A zero observer MUST revert and roll back the stake change.
-- Business reason: `CouncilRegistry` requires delegator voting-balance updates.
+- Business reason: `CouncilRegistry` requires delegator voting-balance updates. Until then, Owner MAY set a `NoOpStakeObserver` so nodes can join the network; Owner MAY later replace it with `CouncilRegistry`.
 - Fund effect: the callback sends no funds and does not determine a receiver or amount.
 - Owner compromise: the attacker can pause stake-amount changes by clearing the observer or install an observer that reverts staking operations. The observer cannot receive staking funds through this binding.
 

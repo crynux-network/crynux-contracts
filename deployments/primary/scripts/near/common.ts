@@ -25,6 +25,11 @@ export type NearConfig = {
     nearTokenDeployerAccountId: string;
     nearRpcUrl: string;
   };
+  aurora?: {
+    name: string;
+    chainId: number;
+    rpcUrl: string;
+  };
   bridgedCrynuxToken: {
     name: string;
     symbol: string;
@@ -34,6 +39,7 @@ export type NearConfig = {
 
 export type NearContracts = {
   nearCrynuxTokenAccountId: string;
+  auroraCrynuxTokenAddress: Address;
   metadataLoggedTransactionHash: string;
   createdAtTransactionHash: string;
   createdAtBlockHeight: number;
@@ -65,6 +71,7 @@ const configFile = getPrimaryLayerFile('near', 'config.json');
 const contractsFile = getPrimaryLayerFile('near', 'contracts.json');
 const initialNearContracts: NearContracts = {
   nearCrynuxTokenAccountId: '',
+  auroraCrynuxTokenAddress: '0x0000000000000000000000000000000000000000',
   metadataLoggedTransactionHash: '',
   createdAtTransactionHash: '',
   createdAtBlockHeight: 0,

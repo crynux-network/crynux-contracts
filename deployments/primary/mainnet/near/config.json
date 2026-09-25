@@ -6,6 +6,11 @@
     "nearTokenDeployerAccountId": "omdep.near",
     "nearRpcUrl": "https://rpc.mainnet.near.org"
   },
+  "aurora": {
+    "name": "Aurora",
+    "chainId": 1313161554,
+    "rpcUrl": "https://mainnet.aurora.dev"
+  },
   "bridgedCrynuxToken": {
     "name": "Crynux",
     "symbol": "CNX",

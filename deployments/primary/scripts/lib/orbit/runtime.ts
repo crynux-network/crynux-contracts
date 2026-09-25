@@ -54,6 +54,7 @@ export type OrbitDeploymentContracts = {
     benefitAddress: Address;
     delegatedStaking: Address;
     nodeStaking: Address;
+    noopStakeObserver?: Address;
     deployedAtBlockNumber: number;
   };
 };

@@ -7,7 +7,7 @@ import type { Address, Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 
 export type PrimaryDeploymentNetwork = 'testnet' | 'mainnet';
-export type PrimaryLayer = 'ethereum' | 'base' | 'crynux-on-base' | 'robinhood' | 'crynux-on-rh' | 'near';
+export type PrimaryLayer = 'ethereum' | 'base' | 'crynux-on-base' | 'robinhood' | 'crynux-on-rh' | 'near' | 'crynux-on-near';
 
 type ParsedCli = {
   network: PrimaryDeploymentNetwork;
@@ -34,6 +34,7 @@ export const primaryRuntime = {
         robinhood: 'Robinhood Chain Testnet',
         crynuxOnRh: 'Crynux on RH Testnet',
         near: 'NEAR Testnet',
+        crynuxOnNear: 'Crynux on Near Testnet',
       }
     : {
         ethereum: 'Ethereum',
@@ -42,6 +43,7 @@ export const primaryRuntime = {
         robinhood: 'Robinhood Chain',
         crynuxOnRh: 'Crynux on RH',
         near: 'NEAR',
+        crynuxOnNear: 'Crynux on Near',
       },
   hardhatNetworks: parsedCli.network === 'testnet'
     ? {
@@ -50,6 +52,7 @@ export const primaryRuntime = {
         crynuxOnBase: 'crynuxOnBaseSepolia',
         robinhood: 'robinhoodTestnet',
         crynuxOnRh: 'crynuxOnRhTestnet',
+        crynuxOnNear: 'crynuxOnNear',
       }
     : {
         ethereum: 'ethereum',
@@ -57,6 +60,7 @@ export const primaryRuntime = {
         crynuxOnBase: 'crynuxOnBase',
         robinhood: 'robinhood',
         crynuxOnRh: 'crynuxOnRh',
+        crynuxOnNear: 'crynuxOnNear',
       },
 } as const;
 
@@ -117,6 +121,7 @@ export function getPrimaryLayerDir(layer: PrimaryLayer): string {
         robinhood: 'robinhood-testnet',
         'crynux-on-rh': 'crynux-on-rh-testnet',
         near: 'near',
+        'crynux-on-near': 'crynux-on-near-testnet',
       }[layer]
     : {
         ethereum: 'ethereum',
@@ -125,6 +130,7 @@ export function getPrimaryLayerDir(layer: PrimaryLayer): string {
         robinhood: 'robinhood',
         'crynux-on-rh': 'crynux-on-rh',
         near: 'near',
+        'crynux-on-near': 'crynux-on-near',
       }[layer];
 
   return resolve(primaryRuntime.networkDir, layerFolder);

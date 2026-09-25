@@ -8,13 +8,13 @@ This directory defines the Primary deployment workflow for `testnet` and `mainne
 
 Ethereum MUST be the canonical CNX ERC20 supply chain and the only chain in the Primary environment that deploys the `Primary` emission contract.
 
-CNX MUST reach each downstream branch from Ethereum through that branch's recorded canonical bridge path. Base, Crynux on Base, Robinhood Chain, Crynux on RH, and NEAR MUST NOT deploy another Primary emission contract.
+CNX MUST reach each downstream branch from Ethereum through that branch's recorded canonical bridge path. Base, Crynux on Base, Robinhood Chain, Crynux on RH, NEAR, Aurora, and Crynux on Near MUST NOT deploy another Primary emission contract.
 
 The downstream branch specifications are:
 
 - [Base branch](./base-layer.md): Ethereum → Base → Crynux on Base.
 - [Robinhood branch](./robinhood-layer.md): Ethereum → Robinhood Chain → Crynux on RH.
-- [NEAR branch](./near-layer.md): Ethereum → NEAR.
+- [NEAR branch](./near-layer.md): Ethereum → NEAR → Crynux on Near.
 
 Each branch document owns its bridge boundaries, network configuration, deployment commands, operation commands, runtime files, and acceptance requirements. This README MUST NOT redefine those branch-specific requirements.
 

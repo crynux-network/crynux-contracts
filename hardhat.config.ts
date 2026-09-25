@@ -24,6 +24,7 @@ const robinhoodRpcUrl = process.env.ROBINHOOD_RPC_URL ?? "https://rpc.mainnet.ch
 const robinhoodTestnetRpcUrl = process.env.ROBINHOOD_TESTNET_RPC_URL ?? "https://rpc.testnet.chain.robinhood.com";
 const crynuxOnRhRpcUrl = process.env.CRYNUX_ON_RH_RPC_URL ?? "https://json-rpc.rh.crynux.io";
 const crynuxOnRhTestnetRpcUrl = process.env.CRYNUX_ON_RH_TESTNET_RPC_URL ?? "https://json-rpc.rh-testnet.crynux.io";
+const crynuxOnNearRpcUrl = process.env.CRYNUX_ON_NEAR_RPC_URL ?? "https://json-rpc.near.crynux.io";
 const ignitionRequiredConfirmations = Number(process.env.IGNITION_REQUIRED_CONFIRMATIONS ?? "1");
 
 export default defineConfig({
@@ -128,6 +129,13 @@ export default defineConfig({
             chainId: 188962150,
             url: crynuxOnRhTestnetRpcUrl,
             accounts: [configVariable("TESTNET_DEPLOYER_PRIVATE_KEY")],
+        },
+        crynuxOnNear: {
+            type: "http",
+            chainType: "generic",
+            chainId: 1313161911,
+            url: crynuxOnNearRpcUrl,
+            accounts: [configVariable("MAINNET_DEPLOYER_PRIVATE_KEY")],
         },
     },
     typechain: {

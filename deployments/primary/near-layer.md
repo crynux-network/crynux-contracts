@@ -1,14 +1,36 @@
 # Primary NEAR Branch
 
-This workflow bridges Primary CNX from Ethereum to NEAR through NEAR Omni Bridge and records the NEAR NEP-141 bridged CNX token.
+This workflow bridges Primary CNX from Ethereum to NEAR through NEAR Omni Bridge, records the NEAR NEP-141 bridged CNX token, records the Aurora ERC20 CNX representation in the NEAR deployment files, and records the deployed Crynux on Near virtual-chain identifiers.
 
-Aurora virtual chain deposit, token registration, native gas token configuration, and Crynux-on-Near chain operations are outside this workflow.
+Aurora virtual-chain launch, Aurora token registration, native gas token configuration on the virtual chain, and Aurora-operated deposit flows are outside this repository's scripts. Those results are recorded as deployment artifacts only.
 
-## Bridge Boundary
+## Branch Identifiers
 
-Ethereum MUST remain the canonical CNX supply chain and the only chain in this branch that deploys the Primary emission contract. NEAR MUST NOT deploy another Primary emission contract.
+Mainnet names and identifiers:
 
-Ethereum ↔ NEAR MUST use NEAR Omni Bridge. CNX on NEAR MUST be the NEP-141 representation of canonical Ethereum CNX created and supplied through that bridge.
+- Parent chain: `NEAR`, NEP-141 CNX account `a97998bf97f5a6a96393b85b4e02a0440ae220f2.factory.bridge.near`.
+- Aurora chain: `Aurora`, chain ID `1313161554`, ERC20 CNX `0x11832F816CC9C5F87250208e4Bc6e4C82CeC2Bb7`.
+- Child chain: `Crynux on Near`, slug `crynux-on-near`, chain ID `1313161911`.
+- Child RPC: `https://json-rpc.near.crynux.io`.
+- Aurora Cloud bridge: `https://app.auroracloud.dev/dashboard/crynux/silos/478/widgets/bridge`.
+
+NEAR and Aurora token addresses are recorded in `mainnet/near/contracts.json`. Aurora chain identifiers are recorded in `mainnet/near/config.json`. Crynux on Near identifiers are recorded in `mainnet/crynux-on-near/config.json`.
+
+## Bridge Boundaries
+
+Ethereum is the canonical CNX supply chain and the only chain in this branch that deploys the Primary emission contract. NEAR, Aurora, and Crynux on Near do not deploy another Primary emission contract.
+
+Ethereum ↔ NEAR uses NEAR Omni Bridge. CNX on NEAR is the NEP-141 representation of canonical Ethereum CNX created and supplied through that bridge.
+
+NEAR ↔ Aurora uses the Aurora token representation of that NEP-141 CNX. CNX on Aurora is the ERC20 recorded as `auroraCrynuxTokenAddress`.
+
+CNX on Crynux on Near is the native gas token of that virtual chain.
+
+NEAR ↔ Crynux on Near uses the Aurora Cloud bridge. That bridge supports only NEAR ↔ Crynux on Near transfers, not Ethereum or Aurora-layer transfers. The bridge URL is:
+
+- `https://app.auroracloud.dev/dashboard/crynux/silos/478/widgets/bridge`
+
+This repository's Near scripts cover only the Ethereum ↔ NEAR Omni Bridge path used to create and fund the NEAR NEP-141 CNX token. Aurora Cloud bridge transfers are outside this repository's scripts.
 
 ## Deployment Flow
 
@@ -61,7 +83,7 @@ The mainnet account MUST hold enough NEAR to pay for NEAR-side storage registrat
 2. Set the mainnet deployer account in `mainnet/near/config.json`:
    - `"deployerAccountId": "crynux-deployer.near"`
 
-The config file provides the default NEAR deployer account, Omni Bridge addresses, and NEAR RPC URL.
+The config file provides the default NEAR deployer account, Omni Bridge addresses, and NEAR RPC URL. Mainnet also records the Aurora chain name, chain ID, and RPC URL.
 
 ### 4) Query NEAR Account Balance
 
@@ -109,14 +131,35 @@ This script sends NEP-141 CNX from `deployerAccountId` in the NEAR config file, 
 
 This script reads `nearCrynuxTokenAccountId`, queries `ft_metadata` and `ft_total_supply`, and prints the token account, metadata, and total supply.
 
+## Crynux on Near Configuration And Contracts
+
+Crynux on Near node-contract deployment uses the Hardhat deployer key:
+
+```powershell
+npx hardhat keystore set MAINNET_DEPLOYER_PRIVATE_KEY
+```
+
+The deployer account MUST hold enough native CNX on Crynux on Near to pay deployment gas.
+
+Deploy `BenefitAddress`, `DelegatedStaking`, and `NodeStaking`:
+
+```powershell
+npx tsx deployments/primary/scripts/crynux-on-near/deploy-crynux-contracts.ts --network=mainnet
+```
+
+The script reads `crynux-contracts-params` from `mainnet/crynux-on-near/config.json`, rejects missing or invalid parameters, deploys the contracts, and records `nodeContracts` in `mainnet/crynux-on-near/contracts.json`. If `nodeContracts` is already recorded, the script skips deployment and prints the recorded addresses.
+
 ## Files
 
 Near layer files are network-scoped:
 
 - `deployments/primary/scripts/near/`
+- `deployments/primary/scripts/crynux-on-near/`
 - `deployments/primary/testnet/near/config.json`
 - `deployments/primary/testnet/near/contracts.json`
 - `deployments/primary/mainnet/near/config.json`
 - `deployments/primary/mainnet/near/contracts.json`
+- `deployments/primary/mainnet/crynux-on-near/config.json`
+- `deployments/primary/mainnet/crynux-on-near/contracts.json`
 
-Shared script logic lives under `scripts/near`. Network folders contain only configuration and deployment artifacts.
+Shared script logic for the Ethereum ↔ NEAR Omni Bridge path lives under `scripts/near`. Crynux on Near node-contract deployment lives under `scripts/crynux-on-near`. Network folders contain only configuration and deployment artifacts.

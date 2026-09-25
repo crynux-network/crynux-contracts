@@ -528,3 +528,35 @@ describe("DelegatedStaking observer", () => {
         expect(await observer.getCallCount()).to.equal(1);
     });
 });
+
+describe("NoOpStakeObserver", () => {
+    it("allows stake amount changes after setObserver", async () => {
+        const {
+            ethers,
+            nodeOperator,
+            delegator,
+            nodeStaking,
+            delegatedStaking,
+        } = await deployContracts();
+        const noopObserver = await ethers.deployContract("NoOpStakeObserver");
+
+        await nodeStaking.setObserver(await noopObserver.getAddress());
+        await delegatedStaking.setObserver(await noopObserver.getAddress());
+        await delegatedStaking.connect(nodeOperator).setDelegatorShare(10);
+
+        await nodeStaking.connect(nodeOperator).stake(3, { value: 3 });
+        await delegatedStaking
+            .connect(delegator)
+            .stake(nodeOperator.address, 3, { value: 3 });
+
+        expect(
+            (await nodeStaking.getStakingInfo(nodeOperator.address))
+                .stakedBalance
+        ).to.equal(3);
+        expect(
+            await delegatedStaking.getDelegatorTotalStakeAmount(
+                delegator.address
+            )
+        ).to.equal(3);
+    });
+});
